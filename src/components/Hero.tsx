@@ -71,71 +71,58 @@ export function Hero() {
             <MetricCell label="Signals" value={signalsToday} unit="today" />
           </div>
 
+
           {/* Mobile Partner Presence & Status Card */}
-          <div className="mt-4 flex sm:hidden items-center justify-between rounded-xl border border-white/[0.08] bg-black/30 p-3">
-            {(() => {
-              const partnerKey = currentUser === 'shivam' ? 'noor' : currentUser === 'noor' ? 'shivam' : null
-              if (!partnerKey) {
-                return (
-                  <span className="text-[11px] text-white/60">
-                    Identify your profile in settings to view live partner presence.
-                  </span>
-                )
-              }
-              const partnerInfo = live.partnerPresence
-              const isOnline = partnerInfo?.isOnline
-              const lastSeen = partnerInfo?.lastSeen
-              const partnerName = partnerKey === 'shivam' ? 'Shivam' : 'Noor'
-              const color = partnerKey === 'shivam' ? '#00F2FE' : '#FF0844'
+          {(() => {
+            const partnerKey = currentUser === 'shivam' ? 'noor' : currentUser === 'noor' ? 'shivam' : null
+            if (!partnerKey) return null
+            const partnerInfo = live.partnerPresence
+            const isOnline = partnerInfo?.isOnline
+            const lastSeen = partnerInfo?.lastSeen
+            const partnerName = partnerKey === 'shivam' ? 'Shivam' : 'Noor'
+            const color = partnerKey === 'shivam' ? '#00F2FE' : '#FF0844'
 
-              const timeAgoStr = (ts?: number) => {
-                if (!ts) return 'recently'
-                const sec = Math.max(0, Math.floor((Date.now() - ts) / 1000))
-                if (sec < 60) return `${sec}s ago`
-                const min = Math.floor(sec / 60)
-                if (min < 60) return `${min}m ago`
-                const hr = Math.floor(min / 60)
-                return `${hr}h ago`
-              }
+            const timeAgoStr = (ts?: number) => {
+              if (!ts) return 'recently'
+              const sec = Math.max(0, Math.floor((Date.now() - ts) / 1000))
+              if (sec < 60) return `${sec}s ago`
+              const min = Math.floor(sec / 60)
+              if (min < 60) return `${min}m ago`
+              const hr = Math.floor(min / 60)
+              return `${hr}h ago`
+            }
 
-              return (
-                <>
-                  <div className="flex items-center gap-2.5">
-                    <span className="relative flex size-2.5">
-                      {isOnline && (
-                        <span
-                          className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-75"
-                          style={{ backgroundColor: color }}
-                        />
-                      )}
+            return (
+              <div className="mt-4 flex sm:hidden items-center justify-between rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 py-2.5 backdrop-blur-md">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="relative flex size-2 shrink-0">
+                    {isOnline && (
                       <span
-                        className="relative inline-flex size-2.5 rounded-full"
-                        style={{ backgroundColor: isOnline ? color : 'rgba(255,255,255,0.3)' }}
+                        className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-75"
+                        style={{ backgroundColor: color }}
                       />
+                    )}
+                    <span
+                      className="relative inline-flex size-2 rounded-full"
+                      style={{ backgroundColor: isOnline ? color : 'rgba(255,255,255,0.35)' }}
+                    />
+                  </span>
+                  <div className="min-w-0 flex items-center gap-1.5 font-mono text-[10px] tracking-wider uppercase">
+                    <span className="font-semibold text-white/90">{partnerName}</span>
+                    <span className="text-white/40">·</span>
+                    <span style={{ color: isOnline ? color : 'rgba(255,255,255,0.6)' }}>
+                      {isOnline ? 'Online Now' : `Last seen ${timeAgoStr(lastSeen)}`}
                     </span>
-                    <div>
-                      <div className="text-[11px] font-medium uppercase tracking-wider text-white/90">
-                        {partnerName} {isOnline ? 'Online Now ✨' : `Last Seen ${timeAgoStr(lastSeen)}`}
-                      </div>
-                      <div className="text-[9.5px] text-white/50">
-                        {isOnline ? (partnerInfo?.currentActivity || 'Active on Tracker') : 'Offline'}
-                      </div>
-                    </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const el = document.getElementById('top')
-                      if (el) el.scrollIntoView({ behavior: 'smooth' })
-                    }}
-                    className="rounded-lg bg-white/5 px-2.5 py-1 text-[10px] text-white/80 border border-white/10"
-                  >
-                    Sync
-                  </button>
-                </>
-              )
-            })()}
-          </div>
+                </div>
+                {partnerInfo?.currentActivity && isOnline && (
+                  <span className="text-[9.5px] text-white/40 truncate max-w-[110px] font-mono">
+                    {partnerInfo.currentActivity}
+                  </span>
+                )}
+              </div>
+            )
+          })()}
 
 
           <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.03] px-3 py-1 backdrop-blur-sm">

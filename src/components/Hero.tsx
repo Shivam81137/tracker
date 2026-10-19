@@ -8,7 +8,6 @@ import { useNow } from '../hooks/useNow'
 
 /** Minimal, transparent hero: just today's readout and a compact stat strip. */
 export function Hero() {
-  const { viewDate, viewProgress, todayProgress, streak, state } = useOrbit()
   const { viewDate, viewProgress, todayProgress, streak, state, currentUser, live } = useOrbit()
   const now = useNow(20_000)
   const today = toISODate(new Date(now))

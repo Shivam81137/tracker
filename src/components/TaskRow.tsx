@@ -149,7 +149,7 @@ export function TaskRow({ task }: Props) {
           playUiTick()
           deleteTask(task.id)
         }}
-        className="grid size-7 shrink-0 place-items-center rounded-full border border-transparent text-white/25 opacity-0 transition-all duration-200 group-hover:border-white/[0.08] group-hover:text-white/60 hover:border-[#FF0844]/40 hover:text-[#FF0844] focus-visible:opacity-100 max-md:opacity-100"
+        className="grid size-7 shrink-0 place-items-center rounded-full border border-white/[0.08] text-white/60 transition-all duration-200 hover:border-[#FF0844]/40 hover:text-[#FF0844] focus-visible:opacity-100"
         aria-label={`Delete “${task.title}”`}
         title="Delete task"
       >

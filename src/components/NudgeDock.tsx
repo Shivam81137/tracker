@@ -18,7 +18,7 @@ export function NudgeDock() {
         <div className="mr-auto flex min-w-0 flex-col pr-3">
           <span className="label-mono">Partner nudge</span>
           <span className="mt-0.5 text-[11px] text-white/40">
-            {live.supported ? 'Beams instantly to every open tab.' : 'Broadcast channel unavailable in this browser.'}
+            {live.supported ? 'Beams instantly to your partner across phones & tabs.' : 'Cloud sync channel unavailable in this browser.'}
           </span>
         </div>
 

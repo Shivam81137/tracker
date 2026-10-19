@@ -1,41 +1,48 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { CHANNEL_NAME, PEER_HEARTBEAT_MS, PEER_TTL_MS } from '../lib/constants'
 import { uid } from '../lib/storage'
-import type { NudgeKind, OrbitState, SyncMessage } from '../lib/types'
+import type { NudgeKind, OrbitState, SyncMessage, SyncStatus } from '../lib/types'
+import { getLiveCloudSync, type LiveCloudSyncEngine } from '../services/liveCloudSync'
 
 export interface LiveSync {
-  /** Number of *other* tabs currently connected. */
+  /** Number of other tabs/devices active. */
   peers: number
-  /** True while a BroadcastChannel is actually available. */
+  /** True while network is available. */
   supported: boolean
+  /** Cloud connection status: 'synced' | 'connecting' | 'offline' | 'error' */
+  status: SyncStatus
+  /** Timestamp of the last successful sync with cloud or peer */
+  lastSyncedAt: number
+  /** Indicator whether partner just pinged or sent updates */
+  partnerActive: boolean
   broadcastState: (state: OrbitState) => void
-  broadcastNudge: (kind: NudgeKind) => void
+  broadcastNudge: (kind: NudgeKind, senderName?: string, icon?: string) => void
+  forceSyncNow: () => Promise<boolean>
+  updateFirebaseUrl: (url: string) => void
 }
 
 interface Options {
-  /** Apply a replica that arrived from another tab. */
-  onState: (state: OrbitState) => void
-  /** React to a nudge that another tab fired. */
-  onNudge: (kind: NudgeKind) => void
+  /** Apply a replica that arrived from another tab or cloud. */
+  onState: (state: OrbitState, meta?: { source?: 'local' | 'mqtt' | 'firebase' | 'http' }) => void
+  /** React to a nudge that partner or another tab fired. */
+  onNudge: (kind: NudgeKind, from?: string, icon?: string) => void
 }
 
 /**
- * `BroadcastChannel('syncorbit_live_sync')` transport.
- *
- * Two windows open side by side converge at 0ms: every local mutation is
- * published as a full replica, and mergeStates() reconciles them. A light
- * heartbeat keeps a live peer count for the status badge.
+ * LiveSync transport with multi-layer cloud sync + BroadcastChannel.
  */
 export function useLiveSync({ onState, onNudge }: Options): LiveSync {
   const [peers, setPeers] = useState(0)
-  // Derived during render — no effect needed to publish channel support.
-  const supported = typeof BroadcastChannel !== 'undefined'
+  const [status, setStatus] = useState<SyncStatus>('connecting')
+  const [lastSyncedAt, setLastSyncedAt] = useState<number>(() => Date.now())
+  const [partnerActive, setPartnerActive] = useState<boolean>(false)
 
+  const supported = typeof window !== 'undefined'
   const channelRef = useRef<BroadcastChannel | null>(null)
   const selfRef = useRef<string>(uid())
-  const peerMap = useRef(new Map<string, number>())
+  const peerMap = useRef<Map<string, number>>(new Map())
+  const partnerActiveTimer = useRef<number | null>(null)
 
-  // Stable refs so the channel never needs re-creating on re-render.
   const onStateRef = useRef(onState)
   const onNudgeRef = useRef(onNudge)
   useEffect(() => {
@@ -43,27 +50,60 @@ export function useLiveSync({ onState, onNudge }: Options): LiveSync {
     onNudgeRef.current = onNudge
   }, [onState, onNudge])
 
+  const markPartnerActive = useCallback(() => {
+    setPartnerActive(true)
+    setLastSyncedAt(Date.now())
+    if (partnerActiveTimer.current !== null) {
+      window.clearTimeout(partnerActiveTimer.current)
+    }
+    partnerActiveTimer.current = window.setTimeout(() => {
+      setPartnerActive(false)
+    }, 15000)
+  }, [])
+
+  const cloudEngineRef = useRef<LiveCloudSyncEngine | null>(null)
+
+  useEffect(() => {
+    const engine = getLiveCloudSync({
+      onRemoteState: (cloudState, meta) => {
+        markPartnerActive()
+        onStateRef.current(cloudState, { source: meta.source })
+      },
+      onStatusChange: (nextStatus) => {
+        setStatus(nextStatus)
+      },
+      onPeerActive: () => {
+        markPartnerActive()
+      },
+    })
+    cloudEngineRef.current = engine
+    setStatus(engine.getStatus())
+    setLastSyncedAt(engine.getLastSyncedAt() || Date.now())
+  }, [markPartnerActive])
+
   useEffect(() => {
     if (typeof BroadcastChannel === 'undefined') return
 
     const channel = new BroadcastChannel(CHANNEL_NAME)
     channelRef.current = channel
-    const peers = peerMap.current
+    const peersColl = peerMap.current
     const self = selfRef.current
 
     channel.onmessage = (event: MessageEvent<SyncMessage>) => {
       const msg = event.data
       if (!msg || typeof msg !== 'object' || msg.from === self) return
 
-      peers.set(msg.from, Date.now())
-      setPeers(peers.size)
+      peersColl.set(msg.from, Date.now())
+      setPeers(peersColl.size)
 
       switch (msg.t) {
         case 'state':
-          onStateRef.current(msg.state)
+          setLastSyncedAt(Date.now())
+          onStateRef.current(msg.state, { source: 'local' })
           break
         case 'nudge':
-          onNudgeRef.current(msg.kind)
+          markPartnerActive()
+          onNudgeRef.current(msg.kind, msg.senderName, msg.icon)
           break
         case 'ping':
           channel.postMessage({ t: 'pong', from: self, to: msg.from } satisfies SyncMessage)
@@ -81,13 +121,13 @@ export function useLiveSync({ onState, onNudge }: Options): LiveSync {
       channel.postMessage({ t: 'ping', from: self } satisfies SyncMessage)
       const cutoff = Date.now() - PEER_TTL_MS
       let mutated = false
-      for (const [id, at] of peers) {
+      for (const [id, at] of peersColl) {
         if (at < cutoff) {
-          peers.delete(id)
+          peersColl.delete(id)
           mutated = true
         }
       }
-      if (mutated) setPeers(peers.size)
+      if (mutated) setPeers(peersColl.size)
     }, PEER_HEARTBEAT_MS)
 
     return () => {
@@ -95,23 +135,68 @@ export function useLiveSync({ onState, onNudge }: Options): LiveSync {
       channel.onmessage = null
       channel.close()
       channelRef.current = null
-      peers.clear()
+      peersColl.clear()
     }
-  }, [])
+  }, [markPartnerActive])
 
   const broadcastState = useCallback((state: OrbitState) => {
     const channel = channelRef.current
-    if (!channel) return
-    channel.postMessage({ t: 'state', from: selfRef.current, state } satisfies SyncMessage)
+    if (channel) {
+      try {
+        channel.postMessage({ t: 'state', from: selfRef.current, state } satisfies SyncMessage)
+      } catch {}
+    }
+
+    if (cloudEngineRef.current) {
+      cloudEngineRef.current.broadcastState(state)
+      setLastSyncedAt(Date.now())
+    }
   }, [])
 
-  const broadcastNudge = useCallback((kind: NudgeKind) => {
+  const broadcastNudge = useCallback((kind: NudgeKind, senderName?: string, icon?: string) => {
     const channel = channelRef.current
-    if (!channel) return
-    channel.postMessage({ t: 'nudge', from: selfRef.current, kind, at: Date.now() } satisfies SyncMessage)
+    if (channel) {
+      try {
+        channel.postMessage({
+          t: 'nudge',
+          from: selfRef.current,
+          kind,
+          senderName,
+          icon,
+          at: Date.now(),
+        } satisfies SyncMessage)
+      } catch {}
+    }
   }, [])
 
-  return { peers, supported, broadcastState, broadcastNudge }
+  const forceSyncNow = useCallback(async (): Promise<boolean> => {
+    if (cloudEngineRef.current) {
+      setStatus('connecting')
+      const success = await cloudEngineRef.current.fetchHttpState()
+      setStatus('synced')
+      setLastSyncedAt(Date.now())
+      return success
+    }
+    return false
+  }, [])
+
+  const updateFirebaseUrl = useCallback((url: string) => {
+    if (cloudEngineRef.current) {
+      cloudEngineRef.current.updateFirebaseUrl(url)
+    }
+  }, [])
+
+  return {
+    peers,
+    supported,
+    status,
+    lastSyncedAt,
+    partnerActive,
+    broadcastState,
+    broadcastNudge,
+    forceSyncNow,
+    updateFirebaseUrl,
+  }
 }
 
 /* ------------------------------- online state ------------------------------ */

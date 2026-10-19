@@ -1,10 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
-import { Download, Flame, Volume2, VolumeX } from 'lucide-react'
+import { Download, Flame } from 'lucide-react'
 import { BRAND } from '../lib/constants'
 import { onTick } from '../lib/ticker'
 import { useInstallPrompt } from '../hooks/useInstallPrompt'
 import { useOrbit } from '../lib/orbit-context'
 import { useOnline } from '../lib/live'
+import { SyncSettingsModal } from './SyncSettingsModal'
+
+function timeAgo(timestamp: number): string {
+  if (!timestamp) return 'just now'
+  const diffSec = Math.max(0, Math.floor((Date.now() - timestamp) / 1000))
+  if (diffSec < 5) return 'just now'
+  if (diffSec < 60) return `${diffSec}s ago`
+  const diffMin = Math.floor(diffSec / 60)
+  return `${diffMin}m ago`
+}
 
 /** Bottom hairline that tracks the background scrub, so scroll position is legible. */
 function ScrubIndicator() {
@@ -31,36 +41,72 @@ function ScrubIndicator() {
   )
 }
 
-function NetworkBadge() {
+function NetworkBadge({ onOpenSync }: { onOpenSync: () => void }) {
   const online = useOnline()
-  const { live } = useOrbit()
-  const peers = live.peers
-  const full = !online ? 'OFFLINE · LOCAL' : peers > 0 ? `SYNCED · ${peers + 1} TABS` : 'SYNCED ONLINE'
-  const compact = !online ? 'OFFLINE' : peers > 0 ? `SYNC · ${peers + 1}` : 'SYNCED'
+  const { live, currentUser } = useOrbit()
+  const [ago, setAgo] = useState(() => timeAgo(live.lastSyncedAt))
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setAgo(timeAgo(live.lastSyncedAt))
+    }, 4000)
+    return () => clearInterval(timer)
+  }, [live.lastSyncedAt])
+
+  const status = live.status
+  const partnerActive = live.partnerActive
+
+  const getStatusText = () => {
+    if (!online) return { full: 'OFFLINE · LOCAL', compact: 'OFFLINE' }
+    if (status === 'connecting') return { full: 'CONNECTING...', compact: 'SYNCING' }
+    if (status === 'error') return { full: 'RECONNECTING', compact: 'RETRY' }
+    if (partnerActive) return { full: 'PARTNER ACTIVE NOW ✨', compact: 'PARTNER' }
+    return { full: `LIVE CLOUD SYNCED · ${ago}`, compact: 'SYNCED' }
+  }
+
+  const { full, compact } = getStatusText()
+  const partnerColor = currentUser === 'shivam' ? '#FF0844' : '#00F2FE'
 
   return (
-    <span
-      className="pill pill-hover cursor-default select-none"
-      title={
-        online
-          ? `Live channel active${peers > 0 ? ` with ${peers} other tab${peers === 1 ? '' : 's'}` : ''}`
-          : 'No network — changes are saved locally and sync when you reconnect'
-      }
+    <button
+      type="button"
+      onClick={onOpenSync}
+      className={`pill pill-hover cursor-pointer select-none transition ${
+        partnerActive ? 'border-[#00F2FE]/50 bg-[#00F2FE]/10 text-white' : ''
+      }`}
+      title="Click to view Cloud Sync status & room settings"
     >
       <span className="flex h-3 w-[14px] items-end gap-[2px]" aria-hidden="true">
         <span className="h-1.5 w-[2px] origin-bottom rounded-full bg-current opacity-70" />
-        <span className="h-2 w-[2px] origin-bottom rounded-full bg-current opacity-85 animate-eq" style={{ animationDelay: '-0.15s' }} />
-        <span className="h-3 w-[2px] origin-bottom rounded-full bg-current animate-eq" style={{ animationDelay: '-0.4s' }} />
+        <span
+          className="h-2 w-[2px] origin-bottom rounded-full bg-current opacity-85 animate-eq"
+          style={{ animationDelay: '-0.15s' }}
+        />
+        <span
+          className="h-3 w-[2px] origin-bottom rounded-full bg-current animate-eq"
+          style={{ animationDelay: '-0.4s' }}
+        />
       </span>
-      <span className="metric text-[10px] tracking-[0.14em] text-white/75">
+      <span className="metric text-[10px] tracking-[0.12em] text-white/80">
         <span className="hidden sm:inline">{full}</span>
         <span className="sm:hidden">{compact}</span>
       </span>
       <span
-        className={`size-1.5 rounded-full ${online ? 'animate-dot bg-[#00F2FE]' : 'bg-[#FF0844]'}`}
+        className={`size-1.5 rounded-full ${
+          !online
+            ? 'bg-[#FF0844]'
+            : partnerActive
+            ? 'animate-ping'
+            : status === 'connecting'
+            ? 'animate-pulse bg-[#F59E0B]'
+            : 'animate-dot bg-[#00F2FE]'
+        }`}
+        style={{
+          backgroundColor: partnerActive ? partnerColor : undefined,
+        }}
         aria-hidden="true"
       />
-    </span>
+    </button>
   )
 }
 
@@ -91,6 +137,7 @@ function StreakPill() {
 
 function InstallButton() {
   const { install, installed, canPrompt } = useInstallPrompt()
+  if (installed) return null
   const { pushToast } = useOrbit()
   const [busy, setBusy] = useState(false)
 
@@ -148,44 +195,49 @@ function InstallButton() {
   )
 }
 
-function SoundToggle() {
-  const { soundOn, toggleSound } = useOrbit()
-  return (
-    <button
-      type="button"
-      onClick={toggleSound}
-      className="icon-btn size-8 sm:size-9"
-      aria-pressed={soundOn}
-      aria-label={soundOn ? 'Mute interface sound' : 'Enable interface sound'}
-      title={soundOn ? 'Sound on' : 'Sound off'}
-    >
-      {soundOn ? <Volume2 className="size-4" strokeWidth={1.9} /> : <VolumeX className="size-4" strokeWidth={1.9} />}
-    </button>
-  )
-}
-
 export function NavBar() {
-  return (
-    <header className="sticky top-0 z-30 border-b border-white/[0.08] bg-black/40 backdrop-blur-[20px]">
-      <nav className="mx-auto flex h-14 w-full max-w-[1440px] items-center gap-1.5 px-3 sm:h-16 sm:gap-2.5 sm:px-6">
-        <a href="#top" className="group mr-auto flex min-w-0 items-center gap-2 select-none">
-          <span className="animate-halo text-[15px] text-[#00F2FE] transition-transform duration-500 group-hover:rotate-90">
-            {BRAND.mark}
-          </span>
-          <span className="truncate text-[12px] font-semibold tracking-[0.26em] text-white/92 uppercase sm:text-[14px] sm:tracking-[0.28em]">
-            {BRAND.name}
-          </span>
-          <span className="ml-1 hidden text-[10px] tracking-[0.2em] text-white/25 uppercase xl:inline">
-            Shivam · Noor
-          </span>
-        </a>
+  const [syncModalOpen, setSyncModalOpen] = useState(false)
+  const { currentUser } = useOrbit()
 
-        <NetworkBadge />
-        <StreakPill />
-        <InstallButton />
-        <SoundToggle />
-      </nav>
-      <ScrubIndicator />
-    </header>
+  return (
+    <>
+      <header className="sticky top-0 z-30 border-b border-white/[0.08] bg-black/40 backdrop-blur-[20px]">
+        <nav className="mx-auto flex h-14 w-full max-w-[1440px] items-center gap-1.5 px-3 sm:h-16 sm:gap-2.5 sm:px-6">
+          <a href="#top" className="group mr-auto flex min-w-0 items-center gap-2.5 select-none">
+            <img
+              src="/logo.png"
+              alt="SyncOrbit Logo"
+              className="size-8 sm:size-9 object-contain drop-shadow-[0_0_12px_rgba(0,242,254,0.35)] transition-transform duration-500 group-hover:scale-105"
+            />
+            <span className="truncate text-[12px] font-semibold tracking-[0.26em] text-white/92 uppercase sm:text-[14px] sm:tracking-[0.28em]">
+              {BRAND.name}
+            </span>
+            <span className="ml-1 hidden text-[10px] tracking-[0.2em] text-white/25 uppercase xl:inline">
+              Shivam · Noor
+            </span>
+          </a>
+
+          {/* Identity Quick Button */}
+          <button
+            type="button"
+            onClick={() => setSyncModalOpen(true)}
+            className="pill pill-hover text-[10px] tracking-wider text-white/80 border-white/10"
+            title="Switch User (Shivam / Noor) or Configure DB"
+          >
+            <span className="text-[12px]">{currentUser === 'shivam' ? '⚡' : currentUser === 'noor' ? '✨' : '👤'}</span>
+            <span className="hidden md:inline uppercase">{currentUser ? `I am ${currentUser}` : 'Who are you?'}</span>
+          </button>
+
+          {/* Live Cloud Sync Badge */}
+          <NetworkBadge onOpenSync={() => setSyncModalOpen(true)} />
+
+          <div className="hidden sm:block"><StreakPill /></div>
+          <InstallButton />
+        </nav>
+        <ScrubIndicator />
+      </header>
+
+      <SyncSettingsModal isOpen={syncModalOpen} onClose={() => setSyncModalOpen(false)} />
+    </>
   )
 }

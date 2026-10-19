@@ -21,10 +21,12 @@ export interface Task {
   owner: Person
   title: string
   done: boolean
+  completed?: boolean
   /** Optional 24h `HH:mm` reminder slot. */
   time?: string
   priority: Priority
   cheers: number
+  cheered?: boolean
   /** Mirrored tasks from a `both` assignment share a link id. */
   linkId?: string
   /** Set when the task was rolled forward from an earlier date. */
@@ -32,6 +34,8 @@ export interface Task {
   createdAt: number
   updatedAt: number
   completedAt?: number
+  /** Item-level tombstone to sync deletions across devices */
+  deleted?: boolean
 }
 
 export interface NudgeEvent {
@@ -40,6 +44,27 @@ export interface NudgeEvent {
   at: number
   /** Device that authored the signal, so both replicas label it consistently. */
   by: string
+  from?: string
+  icon?: string
+}
+
+export interface PeerNudge {
+  id?: string | number
+  from: string
+  to?: string
+  kind: NudgeKind
+  icon?: string
+  at: number
+}
+
+export interface TimestampedText {
+  text: string
+  updatedAt: number
+}
+
+export interface TimestampedEmoji {
+  emoji: string
+  updatedAt: number
 }
 
 /** Persisted root document. */
@@ -47,8 +72,12 @@ export interface OrbitState {
   version: number
   tasks: Task[]
   nudges: NudgeEvent[]
-  /** Delete tombstones (task id -> deletedAt) so cross-tab deletes converge. */
+  /** Delete tombstones (task id -> deletedAt) so cross-tab and cross-device deletes converge. */
   tombstones: Record<string, number>
+  shivamMood?: TimestampedEmoji
+  noorMood?: TimestampedEmoji
+  sharedScratchpad?: TimestampedText
+  lastNudge?: PeerNudge
 }
 
 export type Accent = 'shivam' | 'noor' | 'sync' | 'neutral'
@@ -72,11 +101,14 @@ export interface NewTaskInput {
 
 /* ------------------------------ live sync ------------------------------ */
 
+export type SyncStatus = 'synced' | 'connecting' | 'offline' | 'error'
+
 export type SyncMessage =
   | { t: 'state'; from: string; state: OrbitState }
-  | { t: 'nudge'; from: string; kind: NudgeKind; at: number }
+  | { t: 'nudge'; from: string; kind: NudgeKind; at: number; senderName?: string; icon?: string }
   | { t: 'ping'; from: string }
   | { t: 'pong'; from: string; to: string }
+
 
 /* ------------------------------- progress ------------------------------ */
 

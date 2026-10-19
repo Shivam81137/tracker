@@ -4,17 +4,25 @@ import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  server: {
+    port: 5173,
+    host: true,
+  },
+  preview: {
+    port: 5173,
+    host: true,
+  },
   plugins: [
     react(),
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
-      includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png'],
+      includeAssets: ['logo.png', 'favicon.svg', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png'],
       manifest: {
         id: '/',
-        name: 'SyncOrbit — Shivam & Noor',
-        short_name: 'SyncOrbit',
+        name: 'syncorbit',
+        short_name: 'syncorbit',
         description: 'An ultra-minimalist, offline-first daily tracker for two.',
         start_url: '/',
         scope: '/',

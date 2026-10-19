@@ -1,6 +1,6 @@
-import { NUDGE_LOG_LIMIT, STORAGE_KEY, TOMBSTONE_TTL_MS, DEVICE_KEY } from './constants'
+import { NUDGE_LOG_LIMIT, STORAGE_KEY, TOMBSTONE_TTL_MS, DEVICE_KEY, USER_IDENTITY_KEY, FIREBASE_URL_KEY } from './constants'
 import { fromISODate, todayISO } from './date'
-import type { NudgeEvent, OrbitState, Priority, Task } from './types'
+import type { NudgeEvent, OrbitState, Person, Priority, Task } from './types'
 
 export const STATE_VERSION = 1
 
@@ -50,9 +50,12 @@ function sanitizeTask(raw: unknown): Task | null {
   if (!trimmed) return null
 
   const createdAt = typeof raw.createdAt === 'number' && Number.isFinite(raw.createdAt) ? raw.createdAt : Date.now()
-  const done = raw.done === true
+  const done = raw.done === true || raw.completed === true
+  const deleted = raw.deleted === true
   const time = typeof raw.time === 'string' && TIME_RE.test(raw.time) ? raw.time : undefined
   const priority = PRIORITY_SET.has(raw.priority as Priority) ? (raw.priority as Priority) : 'chill'
+  const cheers = typeof raw.cheers === 'number' && Number.isFinite(raw.cheers) ? Math.max(0, Math.floor(raw.cheers)) : 0
+  const cheered = raw.cheered === true || cheers > 0
 
   return {
     id,
@@ -60,9 +63,12 @@ function sanitizeTask(raw: unknown): Task | null {
     owner,
     title: trimmed,
     done,
+    completed: done,
+    deleted,
     time,
     priority,
-    cheers: typeof raw.cheers === 'number' && Number.isFinite(raw.cheers) ? Math.max(0, Math.floor(raw.cheers)) : 0,
+    cheers,
+    cheered,
     linkId: typeof raw.linkId === 'string' && raw.linkId ? raw.linkId : undefined,
     rolledFrom: typeof raw.rolledFrom === 'string' && ISO_RE.test(raw.rolledFrom) ? raw.rolledFrom : undefined,
     createdAt,
@@ -84,7 +90,9 @@ function sanitizeNudge(raw: unknown): NudgeEvent | null {
   const at = typeof raw.at === 'number' && Number.isFinite(raw.at) ? raw.at : Date.now()
   const id = typeof raw.id === 'string' && raw.id ? raw.id : `${kind}-${at}`
   const by = typeof raw.by === 'string' && raw.by ? raw.by : 'unknown'
-  return { id, kind, at, by }
+  const from = typeof raw.from === 'string' ? raw.from : undefined
+  const icon = typeof raw.icon === 'string' ? raw.icon : undefined
+  return { id, kind, at, by, from, icon }
 }
 
 export function sanitizeState(raw: unknown): OrbitState {
@@ -118,11 +126,43 @@ export function sanitizeState(raw: unknown): OrbitState {
 
   const pruned = pruneTombstones(tombstones)
 
+  const shivamMood =
+    isRecord(raw.shivamMood) && typeof raw.shivamMood.emoji === 'string' && typeof raw.shivamMood.updatedAt === 'number'
+      ? { emoji: raw.shivamMood.emoji, updatedAt: raw.shivamMood.updatedAt }
+      : undefined
+
+  const noorMood =
+    isRecord(raw.noorMood) && typeof raw.noorMood.emoji === 'string' && typeof raw.noorMood.updatedAt === 'number'
+      ? { emoji: raw.noorMood.emoji, updatedAt: raw.noorMood.updatedAt }
+      : undefined
+
+  const sharedScratchpad =
+    isRecord(raw.sharedScratchpad) &&
+    typeof raw.sharedScratchpad.text === 'string' &&
+    typeof raw.sharedScratchpad.updatedAt === 'number'
+      ? { text: raw.sharedScratchpad.text, updatedAt: raw.sharedScratchpad.updatedAt }
+      : undefined
+
+  const lastNudge =
+    isRecord(raw.lastNudge) && raw.lastNudge.id !== undefined && typeof raw.lastNudge.from === 'string'
+      ? {
+          id: raw.lastNudge.id as string | number,
+          from: raw.lastNudge.from,
+          kind: (raw.lastNudge.kind as any) || 'boost',
+          icon: typeof raw.lastNudge.icon === 'string' ? raw.lastNudge.icon : undefined,
+          at: typeof raw.lastNudge.at === 'number' ? raw.lastNudge.at : Date.now(),
+        }
+      : undefined
+
   return {
     version: STATE_VERSION,
-    tasks: [...byId.values()].filter((task) => !isDeleted(task, pruned)),
+    tasks: [...byId.values()].map((task) => (isDeleted(task, pruned) ? { ...task, deleted: true } : task)),
     nudges,
     tombstones: pruned,
+    shivamMood,
+    noorMood,
+    sharedScratchpad,
+    lastNudge,
   }
 }
 
@@ -136,6 +176,7 @@ export function pruneTombstones(tombstones: Record<string, number>): Record<stri
 }
 
 export function isDeleted(task: Task, tombstones: Record<string, number>): boolean {
+  if (task.deleted === true) return true
   const at = tombstones[task.id]
   return typeof at === 'number' && at >= task.updatedAt
 }
@@ -173,15 +214,101 @@ export function mergeStates(a: OrbitState, b: OrbitState): OrbitState {
     if (!prev || task.updatedAt > prev.updatedAt) byId.set(task.id, task)
   }
 
+  // Ensure deleted tasks from tombstones stay marked
+  for (const [id, task] of byId.entries()) {
+    if (isDeleted(task, pruned)) {
+      byId.set(id, { ...task, deleted: true })
+    }
+  }
+
   const nudges = new Map<string, NudgeEvent>()
   for (const nudge of [...a.nudges, ...b.nudges]) nudges.set(nudge.id, nudge)
 
+  const pickFresher = <T extends { updatedAt: number }>(x?: T, y?: T): T | undefined => {
+    if (!x) return y
+    if (!y) return x
+    return x.updatedAt >= y.updatedAt ? x : y
+  }
+
+  const pickNudge = (x?: OrbitState['lastNudge'], y?: OrbitState['lastNudge']) => {
+    if (!x) return y
+    if (!y) return x
+    return x.at >= y.at ? x : y
+  }
+
   return {
     version: STATE_VERSION,
-    tasks: [...byId.values()].filter((task) => !isDeleted(task, pruned)),
+    tasks: [...byId.values()],
     nudges: [...nudges.values()].sort((x, y) => y.at - x.at).slice(0, NUDGE_LOG_LIMIT),
     tombstones: pruned,
+    shivamMood: pickFresher(a.shivamMood, b.shivamMood),
+    noorMood: pickFresher(a.noorMood, b.noorMood),
+    sharedScratchpad: pickFresher(a.sharedScratchpad, b.sharedScratchpad),
+    lastNudge: pickNudge(a.lastNudge, b.lastNudge),
   }
+}
+
+/* ---------------------------- identity & firebase ---------------------------- */
+
+export function getUserIdentity(): Person | null {
+  try {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search)
+      const userParam = urlParams.get('user')?.toLowerCase()
+      if (userParam === 'shivam' || userParam === 'noor') {
+        localStorage.setItem(USER_IDENTITY_KEY, userParam)
+        return userParam as Person
+      }
+    }
+    const stored = localStorage.getItem(USER_IDENTITY_KEY)
+    if (stored === 'shivam' || stored === 'noor') return stored as Person
+    return null
+  } catch {
+    return null
+  }
+}
+
+export function setUserIdentity(person: Person): void {
+  try {
+    localStorage.setItem(USER_IDENTITY_KEY, person)
+  } catch (err) {
+    console.warn('[syncorbit] failed to save identity', err)
+  }
+}
+
+export function getFirebaseDbUrl(): string {
+  try {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search)
+      const dbParam = urlParams.get('db')
+      if (dbParam) {
+        const decoded = decodeURIComponent(dbParam)
+        localStorage.setItem(FIREBASE_URL_KEY, decoded)
+        return decoded
+      }
+    }
+    const envUrl = (import.meta as any).env?.VITE_FIREBASE_DB_URL
+    if (envUrl && typeof envUrl === 'string' && envUrl.trim()) return envUrl.trim()
+    const stored = localStorage.getItem(FIREBASE_URL_KEY)
+    return stored ? stored.trim() : ''
+  } catch {
+    return ''
+  }
+}
+
+export function setFirebaseDbUrl(url: string): void {
+  try {
+    localStorage.setItem(FIREBASE_URL_KEY, url.trim())
+  } catch (err) {
+    console.warn('[syncorbit] failed to save firebase url', err)
+  }
+}
+
+export {
+  getUserIdentity as getCurrentUser,
+  setUserIdentity as saveCurrentUser,
+  getFirebaseDbUrl as getFirebaseUrl,
+  setFirebaseDbUrl as saveFirebaseUrl,
 }
 
 /* ---------------------------- derived helpers ---------------------------- */

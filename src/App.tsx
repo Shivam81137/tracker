@@ -9,9 +9,46 @@ import { LoadLine } from './components/LoadLine'
 import { ParticleField } from './components/ParticleField'
 import { TaskBoard } from './components/TaskBoard'
 import { ToastStack } from './components/ToastStack'
+import { SharedScratchpad } from './components/SharedScratchpad'
 import { useFrameSequence } from './hooks/useFrameSequence'
 import { OrbitProvider } from './lib/store'
+import { useOrbit } from './lib/orbit-context'
 import { primeAudio } from './lib/audio'
+
+function FirstTimeIdentityBanner() {
+  const { currentUser, setCurrentUser } = useOrbit()
+  if (currentUser) return null
+
+  return (
+    <aside
+      aria-label="Select your identity"
+      className="fixed bottom-4 inset-x-4 z-40 mx-auto max-w-md rounded-2xl border border-[#00F2FE]/30 bg-[#0C1017]/95 p-4 shadow-2xl backdrop-blur-xl text-white"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold text-white/95">Who is using this phone?</p>
+          <p className="text-[11px] text-white/50">Personalize real-time sync & partner nudges</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setCurrentUser('shivam')}
+            className="rounded-xl border border-[#00F2FE]/40 bg-[#00F2FE]/15 px-3 py-1.5 text-xs font-medium text-[#00F2FE] hover:bg-[#00F2FE]/25 transition"
+          >
+            Shivam ⚡
+          </button>
+          <button
+            type="button"
+            onClick={() => setCurrentUser('noor')}
+            className="rounded-xl border border-[#FF0844]/40 bg-[#FF0844]/15 px-3 py-1.5 text-xs font-medium text-[#FFB199] hover:bg-[#FF0844]/25 transition"
+          >
+            Noor ✨
+          </button>
+        </div>
+      </div>
+    </aside>
+  )
+}
 
 /** Scroll-scrubbed splash stage. No boot gate: the workspace is interactive at once. */
 function Shell() {
@@ -48,15 +85,17 @@ function Shell() {
         <NavBar />
 
         <main id="top" className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col gap-3 px-3 pt-5 pb-16 sm:px-6 sm:gap-4">
-          <Hero />
-          <NudgeDock />
-          <DateRibbon />
-
           <div className="grid gap-3 sm:gap-4 lg:grid-cols-2">
             <TaskBoard owner="shivam" />
             <TaskBoard owner="noor" />
           </div>
 
+          <DateRibbon />
+
+          <Hero />
+          <NudgeDock />
+
+          <SharedScratchpad />
           <OrbitLog />
         </main>
 
@@ -64,6 +103,7 @@ function Shell() {
       </div>
 
       <ToastStack />
+      <FirstTimeIdentityBanner />
 
       <LoadLine progress={sequence.progress} done={sequence.done} degraded={sequence.degraded} />
     </>

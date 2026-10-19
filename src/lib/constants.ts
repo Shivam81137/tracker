@@ -22,7 +22,7 @@ export const DECODE_WINDOW = 10
 export const PRELOAD_CONCURRENCY = 8
 
 export const BRAND = {
-  name: 'SyncOrbit',
+  name: 'syncorbit',
   mark: '✦',
   tagline: 'Daily sync for two',
 } as const
@@ -31,6 +31,13 @@ export const STORAGE_KEY = 'syncorbit.state.v1'
 export const SOUND_KEY = 'syncorbit.sound.v1'
 export const DEVICE_KEY = 'syncorbit.device.v1'
 export const CHANNEL_NAME = 'syncorbit_live_sync'
+export const USER_IDENTITY_KEY = 'syncorbit.user_identity'
+export const FIREBASE_URL_KEY = 'syncorbit.firebase_db_url'
+export const CLOUD_ROOM_KEY = 'syncorbit_shivam_noor_v2'
+export const MQTT_TOPIC = 'syncorbit/prod/shivam_noor_2026/state'
+export const MQTT_BROKER_PRIMARY = 'wss://broker.emqx.io:8084/mqtt'
+export const MQTT_BROKER_FALLBACK = 'wss://test.mosquitto.org:8081/mqtt'
+
 
 export interface PartnerMeta {
   id: Person

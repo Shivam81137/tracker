@@ -5,6 +5,7 @@ import type {
   NewTaskInput,
   NudgeKind,
   OrbitState,
+  Person,
   StreakInfo,
   Task,
   Toast,
@@ -30,7 +31,15 @@ export interface OrbitApi {
   todayProgress: DayProgress
   streak: StreakInfo
   rolloverCount: number
-  lastNudge: { kind: NudgeKind; at: number; source: 'self' | 'peer' } | null
+  lastNudge: { kind: NudgeKind; at: number; source: 'self' | 'peer'; icon?: string } | null
+
+  /* identity & cloud */
+  currentUser: Person | null
+  setCurrentUser: (person: Person) => void
+  firebaseDbUrl: string
+  setFirebaseUrl: (url: string) => void
+  setMood: (person: Person, emoji: string) => void
+  setScratchpad: (text: string) => void
 
   /* mutations */
   addTasks: (input: NewTaskInput) => number

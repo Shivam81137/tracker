@@ -54,7 +54,7 @@ export function Footer() {
     <footer className="mt-auto border-t border-white/[0.08] bg-black/[0.16] backdrop-blur-[6px]">
       <div className="mx-auto flex w-full max-w-[1200px] items-center gap-3 px-4 py-5 sm:px-6">
         <span className="flex items-center gap-2 text-[11px] tracking-tight text-white/40">
-          <span className="text-[#00F2FE]">{BRAND.mark}</span>
+          <img src="/logo.png" alt="SyncOrbit" className="size-4 object-contain" />
           <span className="tracking-[0.2em] uppercase">{BRAND.name}</span>
           <span className="text-white/20">— {BRAND.tagline}</span>
         </span>

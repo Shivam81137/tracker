@@ -6,8 +6,8 @@ import { burstFromElement, fireBurst } from './fx'
 import { useLiveSync } from './live'
 import { OrbitContext, type OrbitApi } from './orbit-context'
 import { dayProgress } from './progress'
-import { computeStreak, getDeviceId, loadState, mergeStates, saveState, sortTasks, uid } from './storage'
-import type { NewTaskInput, NudgeKind, OrbitState, Task, Toast } from './types'
+import { computeStreak, getCurrentUser, getDeviceId, getFirebaseUrl, loadState, mergeStates, saveCurrentUser, saveFirebaseUrl, saveState, sortTasks, uid } from './storage'
+import type { NewTaskInput, NudgeKind, OrbitState, Person, Task, Toast } from './types'
 
 interface CommitOptions {
   broadcast?: boolean
@@ -29,11 +29,26 @@ export function OrbitProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([])
   const [soundOn, setSoundOn] = useState<boolean>(initialSound)
   const [deviceId] = useState<string>(getDeviceId)
+  const [currentUser, setCurrentUserState] = useState<Person | null>(getCurrentUser)
+  const [firebaseDbUrl, setFirebaseDbUrlState] = useState<string>(getFirebaseUrl)
 
   const stateRef = useRef(state)
   const timers = useRef(new Map<string, number>())
   const commitRef = useRef<(updater: (prev: OrbitState) => OrbitState, opts?: CommitOptions) => void>(() => {})
-  const remoteNudgeRef = useRef<(kind: NudgeKind) => void>(() => {})
+  const remoteNudgeRef = useRef<(kind: NudgeKind, from?: string, icon?: string) => void>(() => {})
+
+  const setCurrentUser = useCallback((person: Person) => {
+    saveCurrentUser(person)
+    setCurrentUserState(person)
+  }, [])
+
+  const updateFirebaseUrlRef = useRef<(url: string) => void>(() => {})
+
+  const setFirebaseUrl = useCallback((url: string) => {
+    saveFirebaseUrl(url)
+    setFirebaseDbUrlState(url)
+    updateFirebaseUrlRef.current(url)
+  }, [])
 
   /* --------------------------------- toasts -------------------------------- */
 
@@ -74,8 +89,14 @@ export function OrbitProvider({ children }: { children: ReactNode }) {
     onState: useCallback((remote: OrbitState) => {
       commitRef.current((prev) => mergeStates(prev, remote), { broadcast: false, persist: true })
     }, []),
-    onNudge: useCallback((kind: NudgeKind) => remoteNudgeRef.current(kind), []),
+    onNudge: useCallback((kind: NudgeKind, from?: string, icon?: string) => {
+      remoteNudgeRef.current(kind, from, icon)
+    }, []),
   })
+
+  useEffect(() => {
+    updateFirebaseUrlRef.current = live.updateFirebaseUrl
+  }, [live.updateFirebaseUrl])
 
   const broadcastStateRef = useRef(live.broadcastState)
   useEffect(() => {
@@ -213,7 +234,11 @@ export function OrbitProvider({ children }: { children: ReactNode }) {
         const now = Date.now()
         const tombstones = { ...prev.tombstones }
         for (const key of ids) tombstones[key] = now
-        return { ...prev, tasks: prev.tasks.filter((task) => !ids.includes(task.id)), tombstones }
+        // Soft delete the task by flagging deleted: true, setting updatedAt, and updating tombstones
+        const updatedTasks = prev.tasks.map((task) =>
+          ids.includes(task.id) ? { ...task, deleted: true, updatedAt: now } : task,
+        )
+        return { ...prev, tasks: updatedTasks, tombstones }
       })
     },
     [commit],
@@ -223,10 +248,11 @@ export function OrbitProvider({ children }: { children: ReactNode }) {
     (id: string) => {
       commit((prev) => {
         if (!prev.tasks.some((task) => task.id === id)) return prev
+        const now = Date.now()
         return {
           ...prev,
           tasks: prev.tasks.map((task) =>
-            task.id === id ? { ...task, cheers: task.cheers + 1, updatedAt: Date.now() } : task,
+            task.id === id ? { ...task, cheers: task.cheers + 1, cheered: true, updatedAt: now } : task,
           ),
         }
       })
@@ -258,13 +284,14 @@ export function OrbitProvider({ children }: { children: ReactNode }) {
   /* --------------------------------- nudges -------------------------------- */
 
   const showNudge = useCallback(
-    (kind: NudgeKind, variant: 'sent' | 'received') => {
+    (kind: NudgeKind, variant: 'sent' | 'received', from?: string, icon?: string) => {
       const meta = NUDGE_MAP[kind]
+      const senderDisplay = from ? `${from} sent ${meta.label}` : `${meta.label} received`
       pushToast({
-        title: variant === 'sent' ? `${meta.emoji} ${meta.label} sent` : `${meta.emoji} ${meta.label} received`,
-        body: variant === 'sent' ? 'Beamed across the live channel.' : `${meta.verb} — right back at you.`,
+        title: variant === 'sent' ? `${icon || meta.emoji} ${meta.label} sent` : `${icon || meta.emoji} ${senderDisplay}`,
+        body: variant === 'sent' ? 'Beamed across the live cloud channel.' : `${meta.verb} — right back at you.`,
         accent: 'sync',
-        icon: meta.emoji,
+        icon: icon || meta.emoji,
       })
     },
     [pushToast],
@@ -274,28 +301,36 @@ export function OrbitProvider({ children }: { children: ReactNode }) {
     (kind: NudgeKind, anchor?: Element | null) => {
       primeAudio()
       playChime(NUDGE_MAP[kind].root)
-      live.broadcastNudge(kind)
-      // Authored once here; peers read it from the state replica instead of
-      // writing their own entry, so signals never echo or double count.
+      const senderName = currentUser ? (currentUser === 'shivam' ? 'Shivam' : 'Noor') : 'Partner'
+      const icon = NUDGE_MAP[kind].emoji
+      live.broadcastNudge(kind, senderName, icon)
+      const now = Date.now()
       commit((prev) => ({
         ...prev,
-        nudges: [{ id: uid(), kind, at: Date.now(), by: deviceId }, ...prev.nudges].slice(0, NUDGE_LOG_LIMIT),
+        nudges: [{ id: uid(), kind, at: now, by: deviceId, from: senderName, icon }, ...prev.nudges].slice(0, NUDGE_LOG_LIMIT),
+        lastNudge: {
+          kind,
+          from: senderName,
+          to: currentUser === 'shivam' ? 'noor' : 'shivam',
+          at: now,
+          icon,
+        },
       }))
-      showNudge(kind, 'sent')
+      showNudge(kind, 'sent', senderName, icon)
       burstFromElement(anchor, [ACCENT_HEX.sync, '#FFB199', '#00F2FE'], {
         count: 34,
         power: 7,
         style: 'spark',
       })
     },
-    [commit, deviceId, live, showNudge],
+    [commit, currentUser, deviceId, live, showNudge],
   )
 
   const receiveNudge = useCallback(
-    (kind: NudgeKind) => {
+    (kind: NudgeKind, from?: string, icon?: string) => {
       primeAudio()
       playChime(NUDGE_MAP[kind].root * 1.5)
-      showNudge(kind, 'received')
+      showNudge(kind, 'received', from, icon)
       fireBurst({
         x: window.innerWidth * (0.2 + Math.random() * 0.6),
         y: window.innerHeight * (0.25 + Math.random() * 0.3),
@@ -312,34 +347,82 @@ export function OrbitProvider({ children }: { children: ReactNode }) {
     remoteNudgeRef.current = receiveNudge
   }, [receiveNudge])
 
+  const lastHandledNudgeIdRef = useRef<string | number | undefined>(state.lastNudge?.id)
+  useEffect(() => {
+    if (!state.lastNudge) return
+    if (state.lastNudge.id && state.lastNudge.id !== lastHandledNudgeIdRef.current) {
+      lastHandledNudgeIdRef.current = state.lastNudge.id
+      const fromLower = state.lastNudge.from.toLowerCase()
+      if (currentUser && fromLower === currentUser.toLowerCase()) {
+        return
+      }
+      const target = state.lastNudge
+      const timer = window.setTimeout(() => {
+        receiveNudge(target.kind, target.from, target.icon)
+      }, 0)
+      return () => window.clearTimeout(timer)
+    }
+  }, [state.lastNudge, currentUser, receiveNudge])
+
+  const setMood = useCallback(
+    (person: Person, emoji: string) => {
+      const now = Date.now()
+      commit((prev) => ({
+        ...prev,
+        [person === 'shivam' ? 'shivamMood' : 'noorMood']: { emoji, updatedAt: now },
+      }))
+    },
+    [commit],
+  )
+
+  const setScratchpad = useCallback(
+    (text: string) => {
+      commit((prev) => ({
+        ...prev,
+        sharedScratchpad: { text, updatedAt: Date.now() },
+      }))
+    },
+    [commit],
+  )
+
   /* -------------------------------- derived -------------------------------- */
 
-  const viewProgress = useMemo(() => dayProgress(state.tasks, viewDate), [state.tasks, viewDate])
-  const todayProgress = useMemo(() => dayProgress(state.tasks, todayISO()), [state.tasks])
-  const streak = useMemo(() => computeStreak(state.tasks), [state.tasks])
+  const activeTasks = useMemo(() => state.tasks.filter((task) => !task.deleted), [state.tasks])
+  const viewProgress = useMemo(() => dayProgress(activeTasks, viewDate), [activeTasks, viewDate])
+  const todayProgress = useMemo(() => dayProgress(activeTasks, todayISO()), [activeTasks])
+  const streak = useMemo(() => computeStreak(activeTasks), [activeTasks])
   const viewTasks = useMemo(
-    () => sortTasks(state.tasks.filter((task) => task.date === viewDate)),
-    [state.tasks, viewDate],
+    () => sortTasks(activeTasks.filter((task) => task.date === viewDate)),
+    [activeTasks, viewDate],
   )
 
   const rolloverCount = useMemo(() => {
     const today = todayISO()
-    return state.tasks.filter((task) => {
+    return activeTasks.filter((task) => {
       if (task.done) return false
       if (isToday(viewDate)) return task.date < today
       return task.date === viewDate && viewDate !== today
     }).length
-  }, [state.tasks, viewDate])
+  }, [activeTasks, viewDate])
 
   const lastNudge = useMemo(() => {
+    if (state.lastNudge) {
+      return {
+        kind: state.lastNudge.kind,
+        at: state.lastNudge.at,
+        source: (currentUser && state.lastNudge.from?.toLowerCase() === currentUser.toLowerCase()) ? ('self' as const) : ('peer' as const),
+        icon: state.lastNudge.icon,
+      }
+    }
     const latest = state.nudges[0]
     if (!latest) return null
     return {
       kind: latest.kind,
       at: latest.at,
       source: latest.by === deviceId ? ('self' as const) : ('peer' as const),
+      icon: latest.icon,
     }
-  }, [state.nudges, deviceId])
+  }, [state.lastNudge, state.nudges, currentUser, deviceId])
 
   /* --------------------------- 100% sync celebration ----------------------- */
 
@@ -383,7 +466,7 @@ export function OrbitProvider({ children }: { children: ReactNode }) {
   const api = useMemo<OrbitApi>(
     () => ({
       state,
-      allTasks: state.tasks,
+      allTasks: activeTasks,
       viewDate,
       setViewDate,
       goToToday,
@@ -394,6 +477,12 @@ export function OrbitProvider({ children }: { children: ReactNode }) {
       streak,
       rolloverCount,
       lastNudge,
+      currentUser,
+      setCurrentUser,
+      firebaseDbUrl,
+      setFirebaseUrl,
+      setMood,
+      setScratchpad,
       addTasks,
       toggleTask,
       deleteTask,
@@ -409,6 +498,7 @@ export function OrbitProvider({ children }: { children: ReactNode }) {
     }),
     [
       state,
+      activeTasks,
       viewDate,
       goToToday,
       shiftDate,
@@ -418,6 +508,12 @@ export function OrbitProvider({ children }: { children: ReactNode }) {
       streak,
       rolloverCount,
       lastNudge,
+      currentUser,
+      setCurrentUser,
+      firebaseDbUrl,
+      setFirebaseUrl,
+      setMood,
+      setScratchpad,
       addTasks,
       toggleTask,
       deleteTask,

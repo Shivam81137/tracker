@@ -14,7 +14,7 @@ export function Hero() {
   const signalsToday = state.nudges.filter((nudge) => toISODate(new Date(nudge.at)) === today).length
   const isCurrentDay = isToday(viewDate)
   const isDifferentFromToday = formatLong(viewDate) !== formatLong(todayISO())
-  const partnerStats = PARTNER_ORDER.map((owner) => viewProgress[owner])
+  void PARTNER_ORDER
 
   return (
     <section className="flex min-h-[calc(100svh-3.5rem)] flex-col justify-center py-6 sm:min-h-[calc(100svh-4rem)]">

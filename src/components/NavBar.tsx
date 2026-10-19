@@ -197,7 +197,7 @@ function InstallButton() {
 
 export function NavBar() {
   const [syncModalOpen, setSyncModalOpen] = useState(false)
-  const { currentUser } = useOrbit()
+  const { currentUser, live } = useOrbit()
 
   return (
     <>
@@ -216,6 +216,58 @@ export function NavBar() {
               Shivam · Noor
             </span>
           </a>
+          {/* Real-time Partner Presence Badge */}
+          {(() => {
+            const partnerKey = currentUser === 'shivam' ? 'noor' : currentUser === 'noor' ? 'shivam' : null
+            if (!partnerKey) return null
+            const partnerInfo = live.partnerPresence
+            const isOnline = partnerInfo?.isOnline
+            const lastSeen = partnerInfo?.lastSeen
+            const partnerName = partnerKey === 'shivam' ? 'Shivam' : 'Noor'
+            const color = partnerKey === 'shivam' ? '#00F2FE' : '#FF0844'
+
+            const timeAgoStr = (ts?: number) => {
+              if (!ts) return 'recently'
+              const sec = Math.max(0, Math.floor((Date.now() - ts) / 1000))
+              if (sec < 60) return `${sec}s ago`
+              const min = Math.floor(sec / 60)
+              if (min < 60) return `${min}m ago`
+              const hr = Math.floor(min / 60)
+              return `${hr}h ago`
+            }
+
+            return (
+              <button
+                type="button"
+                onClick={() => setSyncModalOpen(true)}
+                className="pill pill-hover hidden lg:flex items-center gap-2 px-3 py-1.5 border-white/10 text-[10px] tracking-wider text-white/90 cursor-pointer"
+                title={`Partner Presence: ${partnerName} is ${isOnline ? 'Online Now ✨' : `Last seen ${timeAgoStr(lastSeen)}`}`}
+              >
+                <span className="relative flex size-2">
+                  {isOnline && (
+                    <span
+                      className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-75"
+                      style={{ backgroundColor: color }}
+                    />
+                  )}
+                  <span
+                    className="relative inline-flex size-2 rounded-full"
+                    style={{ backgroundColor: isOnline ? color : 'rgba(255,255,255,0.3)' }}
+                  />
+                </span>
+                <span className="font-medium uppercase tracking-[0.14em]">
+                  {partnerName} {isOnline ? 'ONLINE' : `LAST SEEN ${timeAgoStr(lastSeen).toUpperCase()}`}
+                </span>
+                {partnerInfo?.currentActivity && isOnline && (
+                  <span className="text-white/50 text-[9px] truncate max-w-[100px]">
+                    · {partnerInfo.currentActivity}
+                  </span>
+                )}
+              </button>
+            )
+          })()}
+
+
 
           {/* Identity Quick Button */}
           <button

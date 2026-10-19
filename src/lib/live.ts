@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { CHANNEL_NAME, PEER_HEARTBEAT_MS, PEER_TTL_MS } from '../lib/constants'
 import { uid } from '../lib/storage'
+import { getUserIdentity as getCurrentUser, getFirebaseDbUrl as getFirebaseUrl } from './storage'
+
+import type { PresenceInfo } from '../lib/types'
+import { getPresenceEngine } from '../services/presence'
+
 import type { NudgeKind, OrbitState, SyncMessage, SyncStatus } from '../lib/types'
 import { getLiveCloudSync, type LiveCloudSyncEngine } from '../services/liveCloudSync'
 
@@ -15,11 +20,14 @@ export interface LiveSync {
   lastSyncedAt: number
   /** Indicator whether partner just pinged or sent updates */
   partnerActive: boolean
+  /** Realtime presence info for partner */
+  partnerPresence: PresenceInfo | null
   broadcastState: (state: OrbitState) => void
   broadcastNudge: (kind: NudgeKind, senderName?: string, icon?: string) => void
   forceSyncNow: () => Promise<boolean>
   updateFirebaseUrl: (url: string) => void
 }
+
 
 interface Options {
   /** Apply a replica that arrived from another tab or cloud. */
@@ -36,6 +44,8 @@ export function useLiveSync({ onState, onNudge }: Options): LiveSync {
   const [status, setStatus] = useState<SyncStatus>('connecting')
   const [lastSyncedAt, setLastSyncedAt] = useState<number>(() => Date.now())
   const [partnerActive, setPartnerActive] = useState<boolean>(false)
+
+  const [partnerPresence, setPartnerPresence] = useState<PresenceInfo | null>(null)
 
   const supported = typeof window !== 'undefined'
   const channelRef = useRef<BroadcastChannel | null>(null)
@@ -60,6 +70,22 @@ export function useLiveSync({ onState, onNudge }: Options): LiveSync {
       setPartnerActive(false)
     }, 15000)
   }, [])
+
+  useEffect(() => {
+    getPresenceEngine({
+      currentUser: getCurrentUser(),
+      firebaseUrl: getFirebaseUrl(),
+      onPartnerPresence: (info) => {
+        setPartnerPresence(info)
+        if (info && info.isOnline) {
+          markPartnerActive()
+        }
+      },
+    })
+    return () => {
+      // engine keeps running singleton
+    }
+  }, [markPartnerActive])
 
   const cloudEngineRef = useRef<LiveCloudSyncEngine | null>(null)
 
@@ -192,6 +218,7 @@ export function useLiveSync({ onState, onNudge }: Options): LiveSync {
     status,
     lastSyncedAt,
     partnerActive,
+    partnerPresence,
     broadcastState,
     broadcastNudge,
     forceSyncNow,

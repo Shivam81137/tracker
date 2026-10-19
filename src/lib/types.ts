@@ -90,6 +90,15 @@ export interface Toast {
   icon?: string
   ttl: number
 }
+export interface PresenceInfo {
+  user: Person
+  isOnline: boolean
+  lastSeen: number
+  currentActivity?: string
+}
+
+
+
 
 export interface NewTaskInput {
   title: string

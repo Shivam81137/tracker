@@ -240,10 +240,10 @@ export function NavBar() {
               <button
                 type="button"
                 onClick={() => setSyncModalOpen(true)}
-                className="pill pill-hover hidden lg:flex items-center gap-2 px-3 py-1.5 border-white/10 text-[10px] tracking-wider text-white/90 cursor-pointer"
+                className="pill pill-hover flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 border-white/10 text-[9px] sm:text-[10px] tracking-wider text-white/90 cursor-pointer"
                 title={`Partner Presence: ${partnerName} is ${isOnline ? 'Online Now ✨' : `Last seen ${timeAgoStr(lastSeen)}`}`}
               >
-                <span className="relative flex size-2">
+                <span className="relative flex size-2 shrink-0">
                   {isOnline && (
                     <span
                       className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-75"
@@ -256,13 +256,12 @@ export function NavBar() {
                   />
                 </span>
                 <span className="font-medium uppercase tracking-[0.14em]">
-                  {partnerName} {isOnline ? 'ONLINE' : `LAST SEEN ${timeAgoStr(lastSeen).toUpperCase()}`}
-                </span>
-                {partnerInfo?.currentActivity && isOnline && (
-                  <span className="text-white/50 text-[9px] truncate max-w-[100px]">
-                    · {partnerInfo.currentActivity}
+                  <span className="inline sm:hidden">{partnerKey === 'shivam' ? 'S' : 'N'}</span>
+                  <span className="hidden sm:inline">{partnerName}</span>{' '}
+                  <span className="text-[8px] sm:text-[9px] opacity-80">
+                    {isOnline ? 'LIVE' : timeAgoStr(lastSeen).toUpperCase()}
                   </span>
-                )}
+                </span>
               </button>
             )
           })()}

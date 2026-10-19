@@ -93,22 +93,24 @@ function Shell() {
           {/* Focus readout — date, greeting and the four focus metrics. */}
           <Hero />
 
+          {/* Timeline sits directly beneath the hub, above the boards. */}
+          <DateRibbon />
+
           {/* Primary bento row: the two partner boards. */}
           <section aria-label="Partner task boards" className="grid gap-3 sm:gap-4 lg:grid-cols-2">
             <TaskBoard owner="shivam" />
             <TaskBoard owner="noor" />
           </section>
 
-          {/* Secondary bento row: weekly timeline beside nudge + scratchpad. */}
+          {/* Shared utilities: nudge dock beside the scratchpad. */}
           <section
-            aria-label="Timeline and shared utilities"
+            aria-label="Shared utilities"
             className="grid items-start gap-3 sm:gap-4 lg:grid-cols-12"
           >
             <div className="min-w-0 lg:col-span-7">
-              <DateRibbon />
-            </div>
-            <div className="grid min-w-0 gap-3 sm:gap-4 lg:col-span-5">
               <NudgeDock />
+            </div>
+            <div className="min-w-0 lg:col-span-5">
               <SharedScratchpad />
             </div>
           </section>

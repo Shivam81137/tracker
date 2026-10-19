@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { ArrowDown } from 'lucide-react'
+import { ArrowDown, Clock } from 'lucide-react'
 import { PARTNER_ORDER } from '../lib/constants'
 import { dayNumber, formatLong, fromISODate, greeting, isToday, monthShort, relativeDayLabel, toISODate, todayISO, weekdayShort } from '../lib/date'
 import { pct } from '../lib/progress'
@@ -42,13 +42,16 @@ export function Hero() {
             </div>
           </div>
 
-          <h1 className="mt-4 text-[clamp(28px,5vw,48px)] leading-[1.02] font-medium tracking-[-0.04em] text-white drop-shadow-sm">
+          <h1 className="mt-4 text-[clamp(42px,8.5vw,78px)] leading-[0.98] font-medium tracking-[-0.045em] text-white drop-shadow-sm">
             {relativeDayLabel(viewDate)}
           </h1>
 
-          <p className="mt-1 font-mono text-[10px] tracking-[0.24em] uppercase text-white/45">
-            {weekdayShort(viewDate)} · {dayNumber(viewDate)} {monthShort(viewDate)} {new Date(fromISODate(viewDate)).getFullYear()}
-          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
+            <p className="font-mono text-[13px] tracking-[0.22em] uppercase text-white/60 sm:text-[15px]">
+              {weekdayShort(viewDate)} · {dayNumber(viewDate)} {monthShort(viewDate)} {new Date(fromISODate(viewDate)).getFullYear()}
+            </p>
+            <LiveClock />
+          </div>
 
           <p className="mt-3 max-w-[48ch] text-[13px] leading-relaxed font-normal text-white/65">
             {greeting()}, Shivam &amp; Noor.{' '}
@@ -152,6 +155,31 @@ export function Hero() {
         <ArrowDown className="size-2.5 text-white/25" strokeWidth={1.8} />
       </motion.div>
     </section>
+  )
+}
+
+/** Live wall clock pinned to Indian Standard Time. */
+function LiveClock() {
+  const now = useNow(1000)
+  const ist = new Intl.DateTimeFormat('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+  })
+    .format(now)
+    .toUpperCase()
+
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 backdrop-blur-sm"
+      title="Indian Standard Time (Asia/Kolkata)"
+    >
+      <Clock className="size-3 text-[#F59E0B]" strokeWidth={2} />
+      <span className="metric text-[11px] tracking-[0.08em] text-white/75 tabular-nums">{ist}</span>
+      <span className="metric text-[9px] tracking-[0.16em] text-white/35">IST</span>
+    </span>
   )
 }
 

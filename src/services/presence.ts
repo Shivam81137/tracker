@@ -30,7 +30,9 @@ export class PresenceEngine {
     if (url !== undefined) {
       this.firebaseDbUrl = url
     }
-    this.ping()
+    // Poll immediately so the partner pill swaps to the new counterpart
+    // without waiting for the next heartbeat window.
+    this.ping(true)
   }
 
   public setActivity(activity: string) {

@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
+import { CanvasScrollBackground } from './components/CanvasScrollBackground'
+import { ActivityHeatMap } from './components/ActivityHeatMap'
 import { DateRibbon } from './components/DateRibbon'
-import { FrameCanvas } from './components/FrameCanvas'
 import { Hero } from './components/Hero'
 import { NavBar } from './components/NavBar'
 import { NudgeDock } from './components/NudgeDock'
@@ -10,6 +11,7 @@ import { ParticleField } from './components/ParticleField'
 import { TaskBoard } from './components/TaskBoard'
 import { ToastStack } from './components/ToastStack'
 import { SharedScratchpad } from './components/SharedScratchpad'
+import { SyncVoiceCapsule } from './components/SyncVoiceCapsule'
 import { useFrameSequence } from './hooks/useFrameSequence'
 import { OrbitProvider } from './lib/store'
 import { useOrbit } from './lib/orbit-context'
@@ -67,8 +69,8 @@ function Shell() {
 
   return (
     <>
-      {/* 1 — Scroll-scrubbed Red Velvet splash plate */}
-      <FrameCanvas images={sequence.images} reveal={sequence.loaded > 0} loaded={sequence.loaded} />
+      {/* 1 — Scroll-scrubbed Red Velvet canvas, fixed behind every layer */}
+      <CanvasScrollBackground images={sequence.images} reveal={sequence.loaded > 0} loaded={sequence.loaded} />
 
       {/* 2 — Legibility vignette over the plate */}
       <div
@@ -84,19 +86,48 @@ function Shell() {
       <div className="relative z-10 flex min-h-[220vh] flex-col">
         <NavBar />
 
-        <main id="top" className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col gap-3 px-3 pt-5 pb-16 sm:px-6 sm:gap-4">
-          <div className="grid gap-3 sm:gap-4 lg:grid-cols-2">
+        <main
+          id="top"
+          className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col gap-3 px-3 pt-4 pb-28 sm:gap-4 sm:px-6 sm:pt-6 sm:pb-32"
+        >
+          {/* Focus readout — date, greeting and the four focus metrics. */}
+          <Hero />
+
+          {/* Primary bento row: the two partner boards. */}
+          <section aria-label="Partner task boards" className="grid gap-3 sm:gap-4 lg:grid-cols-2">
             <TaskBoard owner="shivam" />
             <TaskBoard owner="noor" />
-          </div>
+          </section>
 
-          <DateRibbon />
+          {/* Secondary bento row: weekly timeline beside nudge + scratchpad. */}
+          <section
+            aria-label="Timeline and shared utilities"
+            className="grid items-start gap-3 sm:gap-4 lg:grid-cols-12"
+          >
+            <div className="min-w-0 lg:col-span-7">
+              <DateRibbon />
+            </div>
+            <div className="grid min-w-0 gap-3 sm:gap-4 lg:col-span-5">
+              <NudgeDock />
+              <SharedScratchpad />
+            </div>
+          </section>
 
-          <Hero />
-          <NudgeDock />
+          {/* Bottom bento row: all-time log beside the activity heat map. */}
+          <section
+            aria-label="All-time stats and activity"
+            className="grid items-start gap-3 sm:gap-4 lg:grid-cols-12"
+          >
+            <div className="min-w-0 lg:col-span-4">
+              <OrbitLog />
+            </div>
+            <div className="min-w-0 lg:col-span-8">
+              <ActivityHeatMap />
+            </div>
+          </section>
 
-          <SharedScratchpad />
-          <OrbitLog />
+          {/* Closing note: the automated evening journal for both partners. */}
+          <SyncVoiceCapsule />
         </main>
 
         <Footer />

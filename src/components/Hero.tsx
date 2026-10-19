@@ -17,7 +17,10 @@ export function Hero() {
   void PARTNER_ORDER
 
   return (
-    <section className="flex min-h-[calc(100svh-3.5rem)] flex-col justify-center py-6 sm:min-h-[calc(100svh-4rem)]">
+    <section
+      aria-label="Daily focus cards"
+      className="flex flex-col py-1 sm:py-2"
+    >
       <div className="relative">
         <div className="overflow-hidden rounded-[20px] border border-white/[0.06] bg-black/[0.25] p-5 sm:p-7 backdrop-blur-[8px]">
           <div className="flex items-center justify-between gap-4">

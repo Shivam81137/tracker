@@ -4,6 +4,7 @@ import { ACCENT_HEX, NUDGE_LOG_LIMIT, NUDGE_MAP, SOUND_KEY } from './constants'
 import { addDays, isToday, todayISO } from './date'
 import { burstFromElement, fireBurst } from './fx'
 import { useLiveSync } from './live'
+import { getPresenceEngine } from '../services/presence'
 import { OrbitContext, type OrbitApi } from './orbit-context'
 import { dayProgress } from './progress'
 import { computeStreak, getCurrentUser, getDeviceId, getFirebaseUrl, loadState, mergeStates, saveCurrentUser, saveFirebaseUrl, saveState, sortTasks, uid } from './storage'
@@ -40,6 +41,14 @@ export function OrbitProvider({ children }: { children: ReactNode }) {
   const setCurrentUser = useCallback((person: Person) => {
     saveCurrentUser(person)
     setCurrentUserState(person)
+    // Keep the presence heartbeat in step with the identity switcher. The
+    // engine is created by the live-sync effect, so this is a best-effort
+    // handoff after first interaction.
+    try {
+      getPresenceEngine().updateIdentity(person)
+    } catch {
+      /* engine not mounted yet */
+    }
   }, [])
 
   const updateFirebaseUrlRef = useRef<(url: string) => void>(() => {})

@@ -13,7 +13,8 @@ interface Props {
 const MAX_DPR = 2
 
 /**
- * Fixed, full-viewport scroll-scrubbed frame player.
+ * Fixed, full-viewport scroll-scrubbed frame player — the Red Velvet Ice Cream
+ * canvas that sits behind every layer of the workspace.
  *
  * - `object-fit: cover` maths keeps the 2226×1440 plate proportional on both
  *   ultrawide desktops and tall mobile viewports (no stretching, ever).
@@ -21,7 +22,7 @@ const MAX_DPR = 2
  * - `window.scrollY` is mapped to a fractional frame index and eased with
  *   frame-rate independent damping, so scrubbing is smooth in both directions.
  */
-export function FrameCanvas({ images, reveal, loaded }: Props) {
+export function CanvasScrollBackground({ images, reveal, loaded }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const drawRef = useRef<(() => void) | null>(null)
 

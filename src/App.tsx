@@ -90,17 +90,17 @@ function Shell() {
           id="top"
           className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col gap-3 px-3 pt-4 pb-28 sm:gap-4 sm:px-6 sm:pt-6 sm:pb-32"
         >
-          {/* Focus readout — date, greeting and the four focus metrics. */}
-          <Hero />
-
-          {/* Timeline sits directly beneath the hub, above the boards. */}
-          <DateRibbon />
-
-          {/* Primary bento row: the two partner boards. */}
+          {/* Primary: both partners' to-do lists, at the very top. */}
           <section aria-label="Partner task boards" className="grid gap-3 sm:gap-4 lg:grid-cols-2">
             <TaskBoard owner="shivam" />
             <TaskBoard owner="noor" />
           </section>
+
+          {/* Focus readout — date, greeting and the four focus metrics. */}
+          <Hero />
+
+          {/* Timeline directly beneath the hub. */}
+          <DateRibbon />
 
           {/* Shared utilities: nudge dock beside the scratchpad. */}
           <section

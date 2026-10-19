@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { addDays, formatLong, fromISODate, monthShort, todayISO } from '../lib/date'
 import { useOrbit } from '../lib/orbit-context'
 
@@ -37,10 +37,32 @@ interface DayCount {
  *
  * Columns are weeks (Monday-first), rows are weekdays, and colour intensity
  * tracks how many tasks landed on that day. Horizontally scrollable with a
- * hidden scrollbar so a full six-month window never widens the page.
+ * hidden scrollbar so a full-year window never widens the page.
  */
 export function ActivityHeatMap() {
   const { allTasks } = useOrbit()
+  const scrollerRef = useRef<HTMLDivElement | null>(null)
+
+  /* Keep the most recent week (today) in view — the window opens scrolled to
+     the right edge so the latest dates show first on narrow screens. */
+  useEffect(() => {
+    const el = scrollerRef.current
+    if (!el) return
+
+    const pinToLatest = () => {
+      el.scrollLeft = el.scrollWidth
+    }
+
+    pinToLatest()
+    const raf = requestAnimationFrame(pinToLatest)
+    const observer = new ResizeObserver(pinToLatest)
+    observer.observe(el)
+
+    return () => {
+      cancelAnimationFrame(raf)
+      observer.disconnect()
+    }
+  }, [])
 
   const { weeks, months, counts, today, totalDone, activeDays, bestDay } = useMemo(() => {
     const todayISOString = todayISO()
@@ -123,7 +145,7 @@ export function ActivityHeatMap() {
           </div>
         </div>
 
-        <div className="scrollbar-none min-w-0 flex-1 overflow-x-auto pb-1">
+        <div ref={scrollerRef} className="scrollbar-none min-w-0 flex-1 overflow-x-auto pb-1">
           <div className="min-w-max">
             <div
               className="grid h-4"

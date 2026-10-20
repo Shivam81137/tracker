@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { ChevronDown, CornerDownLeft, Link2, Plus, RotateCcw, SlidersHorizontal, X } from 'lucide-react'
+import { ChevronDown, Clock, CornerDownLeft, Flag, Link2, Plus, RotateCcw, SlidersHorizontal } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { PARTNERS, PRIORITIES, PRIORITY_MAP } from '../lib/constants'
 import { formatTime, isToday, relativeDayLabel } from '../lib/date'
@@ -59,6 +59,13 @@ export function QuickAdd({ owner }: Props) {
   ]
     .filter(Boolean)
     .join(' · ')
+
+  const resetDetails = useCallback(() => {
+    playUiTick()
+    setPriority('med')
+    setTime('')
+    setBoth(false)
+  }, [])
 
   const submit = useCallback(() => {
     const trimmed = title.trim()
@@ -201,79 +208,140 @@ export function QuickAdd({ owner }: Props) {
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
             className="overflow-hidden"
           >
-            <div id={detailsId} className="mt-2 flex flex-col gap-2 rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2.5">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="label-mono">Priority</span>
-                <div className="flex items-center gap-1">
-                  {PRIORITIES.map((option) => {
-                    const active = option.id === priority
-                    return (
-                      <button
-                        key={option.id}
-                        type="button"
-                        aria-pressed={active}
-                        onClick={() => {
-                          playUiTick()
-                          setPriority(option.id)
-                        }}
-                        className="metric rounded-full border px-2 py-0.5 text-[10px] tracking-[0.12em] transition-all duration-200"
-                        style={{
-                          color: active ? option.hex : 'rgba(255,255,255,0.5)',
-                          borderColor: active
-                            ? `color-mix(in oklab, ${option.hex} 45%, transparent)`
-                            : 'rgba(255,255,255,0.08)',
-                          background: active ? `color-mix(in oklab, ${option.hex} 14%, transparent)` : 'transparent',
-                        }}
-                      >
-                        {option.short}
-                      </button>
-                    )
-                  })}
-                </div>
-
-                <span className="label-mono ml-auto">Reminder</span>
-                <input
-                  type="time"
-                  value={time}
-                  onChange={(event) => setTime(event.target.value)}
-                  aria-label={`Reminder time for ${partner.name}`}
-                  className="metric rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[11px] text-white/85 focus:border-white/25 focus:outline-none"
-                />
-                {time && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTime('')
-                      playUiTick()
-                    }}
-                    className="icon-btn size-6"
-                    aria-label="Clear reminder time"
-                  >
-                    <X className="size-3" strokeWidth={2.2} />
-                  </button>
-                )}
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
+            <div
+              id={detailsId}
+              className="mt-2 overflow-hidden rounded-xl border border-white/[0.07] bg-white/[0.02]"
+            >
+              {/* Panel header — names the surface and offers a way back to defaults. */}
+              <div className="flex items-center justify-between gap-2 border-b border-white/[0.06] px-3 py-2">
+                <span className="label-mono text-[9px]">Task options</span>
                 <button
                   type="button"
-                  aria-pressed={both}
+                  onClick={resetDetails}
+                  disabled={!tweaked}
+                  className="metric rounded-full border border-white/[0.1] bg-white/[0.04] px-2 py-0.5 text-[9px] tracking-[0.14em] text-white/45 uppercase transition-all duration-200 hover:border-white/20 hover:text-white/85 disabled:pointer-events-none disabled:opacity-0"
+                >
+                  Reset
+                </button>
+              </div>
+
+              {/* Two labelled fields share a row on wider cards and stack on phones. */}
+              <div className="grid gap-3 px-3 py-3 sm:grid-cols-2 sm:gap-4">
+                <div className="min-w-0">
+                  <div className="mb-1.5 flex items-center gap-1.5 text-white/40">
+                    <Flag className="size-3" strokeWidth={2.2} />
+                    <span className="label-mono text-[9px]">Priority</span>
+                  </div>
+                  <div
+                    className="flex items-center gap-1 rounded-lg border border-white/[0.07] bg-black/20 p-0.5"
+                    role="group"
+                    aria-label={`Priority for ${partner.name}'s task`}
+                  >
+                    {PRIORITIES.map((option) => {
+                      const active = option.id === priority
+                      return (
+                        <button
+                          key={option.id}
+                          type="button"
+                          aria-pressed={active}
+                          onClick={() => {
+                            playUiTick()
+                            setPriority(option.id)
+                          }}
+                          className="metric flex-1 rounded-md px-1.5 py-1 text-[9.5px] tracking-[0.12em] uppercase transition-all duration-200"
+                          style={{
+                            color: active ? option.hex : 'rgba(255,255,255,0.45)',
+                            background: active
+                              ? `color-mix(in oklab, ${option.hex} 14%, transparent)`
+                              : 'transparent',
+                            boxShadow: active
+                              ? `inset 0 0 0 1px color-mix(in oklab, ${option.hex} 40%, transparent)`
+                              : 'none',
+                          }}
+                        >
+                          {option.short}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <div className="min-w-0">
+                  <div className="mb-1.5 flex items-center justify-between gap-2">
+                    <span className="flex items-center gap-1.5 text-white/40">
+                      <Clock className="size-3" strokeWidth={2.2} />
+                      <span className="label-mono text-[9px]">Reminder</span>
+                    </span>
+                    {time && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTime('')
+                          playUiTick()
+                        }}
+                        className="metric text-[9px] tracking-[0.14em] text-white/40 uppercase transition-colors hover:text-white/85"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    type="time"
+                    value={time}
+                    onChange={(event) => setTime(event.target.value)}
+                    aria-label={`Reminder time for ${partner.name}`}
+                    className="metric h-8 w-full rounded-lg border border-white/[0.08] bg-black/20 px-2.5 text-[11px] text-white/85 transition-colors focus:border-white/25 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* The mirror pairing is a mode, so it reads as a labelled switch row. */}
+              <div className="flex items-center gap-3 border-t border-white/[0.06] px-3 py-2.5">
+                <span
+                  className="grid size-7 shrink-0 place-items-center rounded-lg border transition-colors duration-200"
+                  style={{
+                    borderColor: both ? 'rgba(245,158,11,0.4)' : 'rgba(255,255,255,0.08)',
+                    background: both ? 'rgba(245,158,11,0.12)' : 'rgba(255,255,255,0.03)',
+                    color: both ? '#F59E0B' : 'rgba(255,255,255,0.5)',
+                  }}
+                >
+                  <Link2 className="size-3.5" strokeWidth={2.2} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div
+                    className="text-[11.5px] font-medium tracking-tight"
+                    style={{ color: both ? '#FDE68A' : 'rgba(255,255,255,0.82)' }}
+                  >
+                    Also add for {other.name}
+                  </div>
+                  <div className="text-[10px] leading-snug text-white/35">
+                    Mirrors this task onto {other.name}&rsquo;s board
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={both}
                   onClick={() => {
                     playUiTick()
                     setBoth((prev) => !prev)
                   }}
-                  className="pill h-7"
+                  aria-label={`Also add this task to ${other.name}'s board`}
+                  className="relative h-[22px] w-10 shrink-0 rounded-full border transition-colors duration-200"
                   style={{
-                    color: both ? '#F59E0B' : 'rgba(255,255,255,0.6)',
-                    borderColor: both ? 'rgba(245,158,11,0.35)' : 'rgba(255,255,255,0.08)',
-                    background: both ? 'rgba(245,158,11,0.1)' : 'rgba(255,255,255,0.04)',
+                    borderColor: both ? 'rgba(245,158,11,0.5)' : 'rgba(255,255,255,0.12)',
+                    background: both ? 'rgba(245,158,11,0.22)' : 'rgba(255,255,255,0.06)',
                   }}
-                  title={`Mirror this task onto ${other.name}'s board as well`}
                 >
-                  <Link2 className="size-3.5" strokeWidth={2.2} />
-                  <span className="text-[11px] tracking-tight">
-                    {both ? 'Both orbits ✓' : `Also add for ${other.name}`}
-                  </span>
+                  <motion.span
+                    className="absolute top-1/2 left-0.5 size-4 -translate-y-1/2 rounded-full"
+                    animate={{ x: both ? 18 : 0 }}
+                    transition={{ type: 'spring', stiffness: 520, damping: 32 }}
+                    style={{
+                      background: both ? '#F59E0B' : 'rgba(255,255,255,0.7)',
+                      boxShadow: both ? '0 0 10px rgba(245,158,11,0.75)' : 'none',
+                    }}
+                  />
                 </button>
               </div>
             </div>

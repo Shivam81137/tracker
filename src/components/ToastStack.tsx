@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
+import { X } from 'lucide-react'
 import { useOrbit } from '../lib/orbit-context'
 import type { Accent } from '../lib/types'
 
@@ -16,11 +17,23 @@ const ACCENT_ICON: Record<Accent, string> = {
   neutral: 'text-white/70',
 }
 
+const ACCENT_BAR: Record<Accent, string> = {
+  shivam: 'bg-[#00F2FE]',
+  noor: 'bg-[#FF0844]',
+  sync: 'bg-[#F59E0B]',
+  neutral: 'bg-white/25',
+}
+
 export function ToastStack() {
   const { toasts, dismissToast } = useOrbit()
 
   return (
-    <div className="pointer-events-none fixed top-[68px] right-3 z-50 flex w-[min(92vw,336px)] flex-col gap-2 sm:right-5">
+    <div
+      role="region"
+      aria-label="Notifications"
+      aria-live="polite"
+      className="pointer-events-none fixed top-[68px] right-3 z-50 flex w-[min(92vw,336px)] flex-col gap-2 sm:right-5"
+    >
       <AnimatePresence initial={false}>
         {toasts.map((toast) => (
           <motion.button
@@ -31,8 +44,14 @@ export function ToastStack() {
             animate={{ opacity: 1, x: 0, scale: 1 }}
             exit={{ opacity: 0, x: 28, scale: 0.97 }}
             transition={{ type: 'spring', stiffness: 420, damping: 34, mass: 0.7 }}
-            className={`pointer-events-auto w-full cursor-pointer rounded-2xl border bg-black/55 px-3.5 py-3 text-left backdrop-blur-[20px] ${ACCENT_RING[toast.accent]}`}
+            className={`group pointer-events-auto relative w-full cursor-pointer overflow-hidden rounded-2xl border bg-[#0b0b10]/82 px-3.5 py-3 pl-4 text-left backdrop-blur-[20px] transition-colors hover:bg-[#0b0b10]/92 ${ACCENT_RING[toast.accent]}`}
+            aria-label={`${toast.title}. Dismiss notification.`}
+            title="Dismiss"
           >
+            <span
+              aria-hidden="true"
+              className={`absolute inset-y-2.5 left-0 w-[2px] rounded-full ${ACCENT_BAR[toast.accent]}`}
+            />
             <div className="flex items-start gap-2.5">
               <span className={`mt-px text-[13px] leading-none ${ACCENT_ICON[toast.accent]}`}>
                 {toast.icon ?? '✦'}
@@ -44,6 +63,9 @@ export function ToastStack() {
                 {toast.body && (
                   <span className="mt-0.5 block text-[11px] leading-snug text-white/45">{toast.body}</span>
                 )}
+              </span>
+              <span aria-hidden="true" className="mt-px text-white/25 transition-colors group-hover:text-white/65">
+                <X className="size-3.5" strokeWidth={2.2} />
               </span>
             </div>
           </motion.button>

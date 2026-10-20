@@ -131,7 +131,23 @@ export function DateRibbon() {
       </div>
 
       {/* 7-day ribbon */}
-      <div className="scrollbar-none mt-3 flex items-stretch gap-1.5 overflow-x-auto pb-0.5">
+      <div
+        role="group"
+        aria-label="Week navigation — use the left and right arrow keys"
+        tabIndex={0}
+        onKeyDown={(event) => {
+          if (event.key === 'ArrowLeft') {
+            event.preventDefault()
+            playUiTick()
+            setViewDate(addDays(viewDate, -1))
+          } else if (event.key === 'ArrowRight') {
+            event.preventDefault()
+            playUiTick()
+            setViewDate(addDays(viewDate, 1))
+          }
+        }}
+        className="scrollbar-none mt-3 flex items-stretch gap-1.5 overflow-x-auto rounded-xl pb-0.5 outline-none focus-visible:ring-1 focus-visible:ring-white/20"
+      >
         <button
           type="button"
           onClick={() => setViewDate(addDays(viewDate, -7))}
@@ -155,19 +171,31 @@ export function DateRibbon() {
               }}
               aria-pressed={selected}
               aria-label={`${formatLong(iso)}${mark ? `, ${mark.done} of ${mark.total} done` : ', no tasks'}`}
-              className={`group relative flex min-w-[62px] flex-1 shrink-0 flex-col items-center gap-1 rounded-xl border px-2 py-2 transition-all duration-250 ${
+              className={`group relative flex min-w-[62px] flex-1 shrink-0 flex-col items-center gap-1 rounded-xl border px-2 py-2 transition-all duration-300 ${
                 selected
-                  ? 'border-white/[0.18] bg-white/[0.08]'
-                  : 'border-white/[0.05] bg-white/[0.02] hover:border-white/[0.12] hover:bg-white/[0.05]'
+                  ? 'border-white/[0.2] bg-white/[0.09] shadow-[inset_0_1px_0_rgba(255,255,255,0.09)]'
+                  : 'border-white/[0.05] bg-white/[0.02] hover:-translate-y-0.5 hover:border-white/[0.13] hover:bg-white/[0.05]'
               }`}
             >
+              {today && (
+                <span
+                  aria-hidden="true"
+                  className="absolute inset-x-3 top-0 h-px bg-gradient-to-r from-transparent via-[#F59E0B]/80 to-transparent"
+                />
+              )}
+              {selected && !today && (
+                <span
+                  aria-hidden="true"
+                  className="absolute inset-x-3 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent"
+                />
+              )}
               <span
                 className={`label-mono ${today ? 'text-[#F59E0B]' : selected ? 'text-white/55' : 'text-white/30'}`}
               >
                 {today ? 'TODAY' : weekdayShort(iso).toUpperCase()}
               </span>
               <span
-                className={`metric text-[15px] leading-none font-medium ${
+                className={`font-display text-[16px] leading-none font-medium ${
                   selected ? 'text-white' : today ? 'text-[#F59E0B]/90' : 'text-white/60'
                 }`}
               >
@@ -193,9 +221,18 @@ export function DateRibbon() {
         </button>
       </div>
 
-      <div className="mt-2 flex items-center gap-3 border-t border-white/[0.08] pt-2">
-        <span className="metric text-[10px] tracking-[0.12em] text-white/25">
-          BOARD · {viewProgress.total} TASKS · {pct(viewProgress.sync)}% SYNCED
+      <div className="mt-2 flex items-center gap-3 border-t border-white/[0.07] pt-2.5" aria-live="polite">
+        <span className="flex items-center gap-2">
+          <span
+            className={`size-1.5 rounded-full ${
+              viewProgress.total > 0 && viewProgress.sync >= 1
+                ? 'bg-[#34D399] shadow-[0_0_8px_rgba(52,211,153,0.6)]'
+                : 'bg-white/20'
+            }`}
+          />
+          <span className="metric text-[10px] tracking-[0.12em] text-white/30">
+            {viewProgress.total} TASKS · {pct(viewProgress.sync)}% SYNCED
+          </span>
         </span>
         <span className="metric ml-auto hidden text-[10px] tracking-[0.12em] text-white/20 sm:inline">
           {formatLong(viewDate)}

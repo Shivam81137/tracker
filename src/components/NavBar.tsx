@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   CalendarPlus,
@@ -487,9 +488,11 @@ function MobileToolsSheet({
           animate={{ height: 'auto', opacity: 1 }}
           exit={{ height: 0, opacity: 0 }}
           transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-          className="absolute inset-x-0 top-full z-40 overflow-hidden border-b border-white/[0.08] bg-[#070709]/92 backdrop-blur-[28px] md:hidden"
+          className="absolute inset-x-0 top-full z-50 overflow-hidden rounded-b-3xl border-x border-b border-white/[0.08] bg-[#070709]/94 shadow-[0_36px_90px_-30px_rgba(0,0,0,0.95)] backdrop-blur-[28px] md:hidden"
         >
-          <div className="mx-auto w-full max-w-[1440px] space-y-3 px-4 pt-3 pb-4">
+          <div className="mx-auto w-full max-w-[1440px] px-4 pt-2 pb-4">
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-white/15" aria-hidden="true" />
+            <div className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="label-mono text-[9px]">Identity</span>
               <span className="metric text-[9px] tracking-[0.12em] text-white/30 uppercase">Who is here?</span>
@@ -530,6 +533,7 @@ function MobileToolsSheet({
             <p className="text-center font-mono text-[9px] tracking-[0.16em] text-white/20 uppercase">
               shivam &amp; noor · daily sync
             </p>
+            </div>
           </div>
         </motion.div>
       )}
@@ -545,16 +549,20 @@ function Logo() {
       aria-label="SyncOrbit home"
     >
       <span className="relative size-9 shrink-0 sm:size-10">
+        <span
+          aria-hidden="true"
+          className="absolute -inset-px rounded-[12px] bg-gradient-to-br from-[#00F2FE]/55 via-white/10 to-[#FF0844]/55 opacity-50 blur-[3px] transition-opacity duration-500 group-hover:opacity-90"
+        />
         <img
           src="/logo.png"
           alt=""
           aria-hidden="true"
           loading="eager"
-          className="size-full rounded-[11px] object-cover ring-1 ring-white/[0.12] shadow-[0_0_20px_-6px_rgba(255,8,68,0.65)] transition-transform duration-500 group-hover:scale-[1.04]"
+          className="relative size-full rounded-[11px] object-cover ring-1 ring-white/[0.14] shadow-[0_0_24px_-8px_rgba(255,8,68,0.6)] transition-transform duration-500 group-hover:scale-[1.04]"
         />
       </span>
       <span className="flex min-w-0 flex-col leading-none">
-        <span className="truncate text-[12px] font-semibold tracking-[0.16em] text-white/95 sm:text-[13px] sm:tracking-[0.18em]">
+        <span className="font-display truncate text-[12px] font-semibold tracking-[0.18em] text-white/95 sm:text-[13px]">
           SyncOrbit
         </span>
       </span>
@@ -565,7 +573,27 @@ function Logo() {
 export function NavBar() {
   const [syncModalOpen, setSyncModalOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
   const installPrompt = useInstallPrompt()
+
+  // Deepen the glass once the page moves, so the bar never feels detached.
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  // Collapse the mobile sheet if the viewport grows into the desktop nav.
+  useEffect(() => {
+    if (!mobileOpen) return
+    const mq = window.matchMedia('(min-width: 768px)')
+    const onChange = () => {
+      if (mq.matches) setMobileOpen(false)
+    }
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [mobileOpen])
 
   const openSettings = () => {
     setMobileOpen(false)
@@ -574,8 +602,14 @@ export function NavBar() {
 
   return (
     <>
-      <header className="sticky top-0 z-30 border-b border-white/[0.08] bg-[#070709]/45 backdrop-blur-[20px]">
-        <nav className="relative mx-auto flex h-14 w-full max-w-[1440px] items-center gap-2 px-3 sm:h-16 sm:px-6 md:gap-4">
+      <header
+        className={`sticky top-0 z-30 border-b backdrop-blur-[24px] transition-[background-color,border-color,box-shadow] duration-300 ${
+          scrolled
+            ? 'border-white/[0.1] bg-[#070709]/78 shadow-[0_20px_60px_-36px_rgba(0,0,0,0.95)]'
+            : 'border-white/[0.07] bg-[#070709]/42'
+        }`}
+      >
+        <nav className="relative z-40 mx-auto flex h-14 w-full max-w-[1440px] items-center gap-2 px-3 sm:h-16 sm:px-6 md:gap-4">
           <Logo />
 
           <div className="flex min-w-0 flex-1 items-center justify-center">
@@ -610,6 +644,25 @@ export function NavBar() {
             </button>
           </div>
         </nav>
+
+        {/* Mobile backdrop: portalled to <body> because the header's
+            backdrop-filter would otherwise trap `fixed` inside a 56px box. */}
+        {createPortal(
+          <AnimatePresence>
+            {mobileOpen && (
+              <motion.div
+                aria-hidden="true"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => setMobileOpen(false)}
+                className="fixed inset-0 top-14 z-20 bg-black/45 backdrop-blur-[1px] sm:top-16 md:hidden"
+              />
+            )}
+          </AnimatePresence>,
+          document.body,
+        )}
 
         <ScrubIndicator />
 

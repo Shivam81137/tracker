@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { ChevronDown, CornerDownLeft, Link2, Plus, RotateCcw, SlidersHorizontal, X } from 'lucide-react'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { PARTNERS, PRIORITIES, PRIORITY_MAP } from '../lib/constants'
 import { formatTime, isToday, relativeDayLabel } from '../lib/date'
 import { playTick, playUiTick } from '../lib/audio'
@@ -33,6 +33,19 @@ export function QuickAdd({ owner }: Props) {
 
   const inputRef = useRef<HTMLInputElement | null>(null)
   const addRef = useRef<HTMLButtonElement | null>(null)
+
+  // Global shortcut (N) asks the active board's field to take focus.
+  useEffect(() => {
+    const onFocusAdd = (event: Event) => {
+      const detail = (event as CustomEvent<{ owner?: Person | null }>).detail
+      const requested = detail?.owner ?? 'shivam'
+      if (requested !== owner) return
+      inputRef.current?.focus()
+      inputRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    }
+    window.addEventListener('syncorbit:focus-add', onFocusAdd)
+    return () => window.removeEventListener('syncorbit:focus-add', onFocusAdd)
+  }, [owner])
 
   const priorityMeta = PRIORITY_MAP[priority]
   const ready = title.trim().length > 0
@@ -160,7 +173,17 @@ export function QuickAdd({ owner }: Props) {
           whileTap={{ scale: 0.95 }}
           onClick={submit}
           disabled={!ready}
-          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-white/[0.14] bg-white/[0.08] px-3 text-[11px] font-medium tracking-tight text-white/90 transition-all duration-200 hover:border-white/25 hover:bg-white/[0.14] disabled:cursor-not-allowed disabled:opacity-35 sm:px-3.5"
+          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-white/[0.14] bg-white/[0.08] px-3 text-[11px] font-medium tracking-tight text-white/90 transition-all duration-200 hover:border-white/25 hover:bg-white/[0.14] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-35 sm:px-3.5"
+          style={
+            ready
+              ? {
+                  background: `linear-gradient(135deg, ${partner.from}, ${partner.to})`,
+                  borderColor: 'transparent',
+                  color: '#041014',
+                  boxShadow: `0 10px 26px -14px ${partner.from}`,
+                }
+              : undefined
+          }
           aria-label={`Add task to ${partner.name}'s board`}
         >
           Add

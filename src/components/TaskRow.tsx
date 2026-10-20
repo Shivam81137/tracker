@@ -24,8 +24,15 @@ export function TaskRow({ task }: Props) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, height: 0, marginTop: 0, transition: { duration: 0.18 } }}
       transition={{ type: 'spring', stiffness: 420, damping: 34 }}
-      className="group relative flex h-12 items-center gap-2.5 rounded-xl px-2 transition-colors duration-200 hover:bg-white/[0.035]"
+      className="group relative flex h-12 items-center gap-2.5 rounded-xl px-2 transition-colors duration-200 hover:bg-white/[0.04]"
     >
+      {task.priority === 'high' && !task.done && (
+        <span
+          aria-hidden="true"
+          className="absolute inset-y-2.5 left-0 w-[2px] rounded-full bg-[#FF0844]/70 shadow-[0_0_8px_rgba(255,8,68,0.45)]"
+        />
+      )}
+
       {/* Custom checkbox */}
       <button
         type="button"
@@ -69,6 +76,7 @@ export function TaskRow({ task }: Props) {
       {/* Title + meta */}
       <div className="flex min-w-0 flex-1 items-center gap-2">
         <span
+          title={task.title}
           className={`line-clamp-1 text-[13px] leading-tight tracking-tight transition-all duration-300 ${
             task.done ? 'text-white/30 line-through decoration-white/25' : 'text-white/88'
           }`}
@@ -149,7 +157,7 @@ export function TaskRow({ task }: Props) {
           playUiTick()
           deleteTask(task.id)
         }}
-        className="grid size-7 shrink-0 place-items-center rounded-full border border-white/[0.08] text-white/60 transition-all duration-200 hover:border-[#FF0844]/40 hover:text-[#FF0844] focus-visible:opacity-100"
+        className="grid size-7 shrink-0 place-items-center rounded-full border border-white/[0.08] text-white/60 opacity-100 transition-all duration-200 hover:border-[#FF0844]/40 hover:text-[#FF0844] focus-visible:opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
         aria-label={`Delete “${task.title}”`}
         title="Delete task"
       >

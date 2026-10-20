@@ -13,7 +13,7 @@ export function NudgeDock() {
   const now = useNow()
 
   return (
-    <section className="glass p-4 sm:p-5" aria-label="Partner nudge dock">
+    <section className="glass glass-interactive p-4 sm:p-5" aria-label="Partner nudge dock">
       <div ref={dockRef} className="flex flex-wrap items-center gap-y-3">
         <div className="mr-auto flex min-w-0 flex-col pr-3">
           <span className="label-mono">Partner nudge</span>
@@ -44,15 +44,22 @@ export function NudgeDock() {
         </div>
       </div>
 
-      <div className="mt-3 flex items-center justify-between border-t border-white/[0.08] pt-2.5">
-        <span className="metric text-[10px] tracking-[0.12em] text-white/30">
-          {lastNudge
-            ? `LAST · ${NUDGE_MAP[lastNudge.kind].label.toUpperCase()} · ${
-                lastNudge.source === 'self' ? 'SENT' : 'RECEIVED'
-              } · ${relativeFromNow(lastNudge.at)}`
-            : 'NO SIGNALS SENT YET'}
+      <div className="mt-3 flex items-center justify-between gap-3 border-t border-white/[0.07] pt-2.5">
+        <span role="status" aria-live="polite" className="flex min-w-0 items-center gap-2">
+          <span
+            className={`size-1.5 shrink-0 rounded-full ${
+              lastNudge ? 'bg-[#F59E0B] shadow-[0_0_8px_#F59E0B]' : 'bg-white/20'
+            }`}
+          />
+          <span className="metric truncate text-[10px] tracking-[0.12em] text-white/30">
+            {lastNudge
+              ? `LAST · ${NUDGE_MAP[lastNudge.kind].label.toUpperCase()} · ${
+                  lastNudge.source === 'self' ? 'SENT' : 'RECEIVED'
+                } · ${relativeFromNow(lastNudge.at)}`
+              : 'NO SIGNALS SENT YET'}
+          </span>
         </span>
-        <span className="metric hidden text-[10px] tracking-[0.12em] text-white/25 sm:inline" title="Local time">
+        <span className="metric hidden shrink-0 text-[10px] tracking-[0.12em] text-white/25 sm:inline" title="Local time">
           {clockLabel(now)}
         </span>
       </div>

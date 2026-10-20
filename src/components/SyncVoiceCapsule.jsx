@@ -218,14 +218,19 @@ function buildPrompt(dateStr, shivamTasks, noorTasks) {
     `Shivam's tasks: ${fmt(shivamTasks)}.`,
     `Noor's tasks: ${fmt(noorTasks)}.`,
     `Date: ${dateStr}.`,
-    'Do not use heart emojis. Use celestial/spark icons instead.',
+    'Do not use emojis or icons; keep the sentence typographic and editorial.',
   ].join(' ')
 }
 
 function sanitizeVoice(text) {
   return `${text}`
-    .replace(/[❤♥💕💖💗💓💝💘]/gu, '✦')
-    .replace(/^["'“”\s]+|["'“”\s]+$/g, '')
+    // Keep the journal voice purely typographic: drop every pictograph,
+    // including sparkles and hearts, wherever it appears.
+    .replace(/[\p{Extended_Pictographic}✦]/gu, '')
+    .replace(/[\uFE0F\u200D]/g, '')
+    .replace(/^["'“”\s…·—–-]+/u, '')
+    .replace(/["'“”\s]+$/g, '')
+    .replace(/\s+([.,;:!?])/g, '$1')
     .replace(/\s+/g, ' ')
     .trim()
 }
@@ -263,7 +268,7 @@ async function requestAiVoice({ apiKey, date, shivamTasks, noorTasks }) {
           {
             role: 'system',
             content:
-              "You are SyncOrbit, an elegant evening journal that summarizes two people's progress. Reply with one refined, warm sentence only. Never cheesy. No heart emojis.",
+              "You are SyncOrbit, an elegant evening journal that summarizes two people's progress. Reply with one refined, warm sentence only. Never cheesy. No emojis or icons.",
           },
           { role: 'user', content: prompt },
         ],
@@ -321,12 +326,13 @@ async function fetchRemoteRecap(firebaseDbUrl, dateStr) {
 
 async function saveRemoteRecap(firebaseDbUrl, dateStr, text) {
   const base = trimBase(firebaseDbUrl)
-  if (!base || !text) return
+  const clean = sanitizeVoice(text)
+  if (!base || !clean) return
   try {
     await fetch(`${base}/recaps/${dateStr}.json`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(text),
+      body: JSON.stringify(clean),
     })
   } catch {
     /* offline-safe: local recap still shows */
@@ -379,7 +385,7 @@ export function SyncVoiceCapsule() {
       const remote = await fetchRemoteRecap(firebaseDbUrl, viewDate)
       if (cancelled) return
       if (remote) {
-        setRecap(remote)
+        setRecap(sanitizeVoice(remote))
         setSource('cloud')
         generatedFor.current = viewDate
         return
@@ -389,7 +395,7 @@ export function SyncVoiceCapsule() {
         const ai = await requestAiVoice({ apiKey, date: viewDate, shivamTasks, noorTasks })
         if (cancelled) return
         if (ai.text) {
-          setRecap(ai.text)
+          setRecap(sanitizeVoice(ai.text))
           setSource('ai')
           generatedFor.current = viewDate
           void saveRemoteRecap(firebaseDbUrl, viewDate, ai.text)
@@ -399,7 +405,7 @@ export function SyncVoiceCapsule() {
 
       const local = generateDailyRecap(shivamTasks, noorTasks, viewDate, variantRef.current)
       if (cancelled) return
-      setRecap(local)
+      setRecap(sanitizeVoice(local))
       setSource('local')
       generatedFor.current = viewDate
       void saveRemoteRecap(firebaseDbUrl, viewDate, local)
@@ -423,7 +429,7 @@ export function SyncVoiceCapsule() {
     if (source === 'cloud') return
 
     const local = generateDailyRecap(shivamTasks, noorTasks, viewDate, variantRef.current)
-    setRecap(local)
+    setRecap(sanitizeVoice(local))
     setSource('local')
     void saveRemoteRecap(firebaseDbUrl, viewDate, local)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -456,7 +462,7 @@ export function SyncVoiceCapsule() {
         setSource('local')
       }
 
-      setRecap(text)
+      setRecap(sanitizeVoice(text))
       generatedFor.current = viewDate
       void saveRemoteRecap(firebaseDbUrl, viewDate, text)
     } finally {
@@ -469,6 +475,10 @@ export function SyncVoiceCapsule() {
       className="relative overflow-hidden rounded-card border border-white/[0.08] bg-[rgba(18,19,26,0.75)] p-5 shadow-2xl backdrop-blur-[20px] sm:p-6"
       aria-label="Daily sync voice"
     >
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#F59E0B]/45 to-transparent"
+      />
       {/* Ambient aurora, kept far behind the type. */}
       <div
         aria-hidden="true"
@@ -492,15 +502,26 @@ export function SyncVoiceCapsule() {
         </span>
       </div>
 
-      <p className="relative mt-5 max-w-3xl font-serif text-[18px] leading-relaxed tracking-tight text-white/90 sm:text-[22px]">
-        {busy && !recap ? (
-          <span className="inline-flex items-center gap-2 text-white/50">
-            <Loader2 className="size-4 animate-spin" /> Composing today’s voice…
-          </span>
-        ) : (
-          recap || <span className="text-white/35">Synthesizing…</span>
-        )}
-      </p>
+      <div className="relative mt-5 max-w-3xl">
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute -top-4 -left-1 font-serif text-[54px] leading-none text-[#F59E0B]/20 select-none"
+        >
+          &ldquo;
+        </span>
+        <p
+          aria-live="polite"
+          className="relative font-serif text-[21px] leading-[1.45] tracking-[-0.005em] text-balance text-white/92 sm:text-[27px]"
+        >
+          {busy && !recap ? (
+            <span className="inline-flex items-center gap-2 font-sans text-[13px] tracking-tight text-white/50">
+              <Loader2 className="size-4 animate-spin" /> Composing today’s voice…
+            </span>
+          ) : (
+            recap || <span className="font-sans text-[13px] text-white/35">Synthesizing…</span>
+          )}
+        </p>
+      </div>
 
       <div className="relative mt-5 flex items-center border-t border-white/[0.08] pt-4">
         <button

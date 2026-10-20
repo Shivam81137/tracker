@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { motion } from 'framer-motion'
 import { Check, Copy, RefreshCw, Sparkles, User, X } from 'lucide-react'
 import { CLOUD_ROOM_KEY } from '../lib/constants'
 import { useOrbit } from '../lib/orbit-context'
@@ -13,6 +14,20 @@ export function SyncSettingsModal({ isOpen, onClose }: SyncSettingsModalProps) {
   const [urlInput, setUrlInput] = useState(firebaseDbUrl || '')
   const [copied, setCopied] = useState(false)
   const [syncing, setSyncing] = useState(false)
+
+  useEffect(() => {
+    if (!isOpen) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      document.body.style.overflow = previousOverflow
+    }
+  }, [isOpen, onClose])
 
   if (!isOpen) return null
 
@@ -65,21 +80,30 @@ export function SyncSettingsModal({ isOpen, onClose }: SyncSettingsModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="fixed inset-0 bg-black/80 backdrop-blur-md" onClick={onClose} aria-hidden="true" />
-      <div className="relative w-full max-w-lg rounded-2xl border border-white/10 bg-[#0C1017]/95 p-6 shadow-2xl backdrop-blur-2xl text-white">
+      <motion.div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="sync-settings-title"
+        initial={{ opacity: 0, y: 12, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+        className="relative w-full max-w-lg rounded-2xl border border-white/10 bg-[#0C1017]/95 p-6 shadow-2xl backdrop-blur-2xl text-white"
+      >
         <div className="flex items-center justify-between pb-4 border-b border-white/10">
           <div className="flex items-center gap-2.5">
             <img src="/logo.png" alt="" className="size-8 object-contain drop-shadow-[0_0_10px_rgba(0,242,254,0.3)]" />
             <div>
-              <h2 className="text-sm font-semibold tracking-wider uppercase text-white/95">
-                Cloud Sync & Identity
+              <h2 id="sync-settings-title" className="text-sm font-semibold tracking-wider uppercase text-white/95">
+                Cloud Sync &amp; Identity
               </h2>
-              <p className="text-[11px] text-white/50">Cross-phone real-time sync for Shivam & Noor</p>
+              <p className="text-[11px] text-white/50">Cross-phone real-time sync for Shivam &amp; Noor</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
             className="rounded-lg p-1.5 text-white/40 hover:bg-white/10 hover:text-white transition"
+            aria-label="Close settings"
           >
             <X className="size-4" />
           </button>
@@ -188,7 +212,7 @@ export function SyncSettingsModal({ isOpen, onClose }: SyncSettingsModalProps) {
             Done
           </button>
         </div>
-      </div>
+      </motion.div>
     </div>
   )
 }

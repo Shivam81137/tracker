@@ -11,7 +11,7 @@ const WEEKDAY_ROWS = ['Mon', '', 'Wed', '', 'Fri', '', ''] as const
 
 /** Level → flavour, moving from cold cyan through amber to hot coral. */
 const LEVEL_CLASS = [
-  'bg-white/[0.045]',
+  'bg-white/[0.075] ring-1 ring-inset ring-white/[0.03]',
   'bg-[#00F2FE]/25',
   'bg-[#00F2FE]/45',
   'bg-[#F59E0B]/70',
@@ -137,7 +137,7 @@ export function ActivityHeatMap() {
             {WEEKDAY_ROWS.map((label, index) => (
               <span
                 key={index}
-                className="flex items-center font-mono text-[8px] tracking-[0.08em] text-white/25"
+                className="flex items-center font-mono text-[8px] tracking-[0.08em] text-white/35"
               >
                 {label}
               </span>
@@ -156,7 +156,7 @@ export function ActivityHeatMap() {
                 <span
                   key={`${month.label}-${month.start}`}
                   style={{ gridColumn: `${month.start + 1} / span ${month.span}` }}
-                  className="font-mono text-[8px] tracking-[0.14em] text-white/30 uppercase"
+                  className="font-mono text-[8px] tracking-[0.14em] text-white/35 uppercase"
                 >
                   {month.label}
                 </span>
@@ -186,6 +186,10 @@ export function ActivityHeatMap() {
                       title={title}
                       className={`rounded-[3px] transition-colors duration-200 ${LEVEL_CLASS[levelFor(count)]} ${
                         future ? 'opacity-25' : ''
+                      } ${
+                        iso === today
+                          ? 'ring-1 ring-white/40 ring-offset-1 ring-offset-[#0b0b0f]'
+                          : ''
                       }`}
                     />
                   )
@@ -218,7 +222,7 @@ export function ActivityHeatMap() {
 function Stat({ label, value }: { label: string; value: number }) {
   return (
     <span className="flex items-baseline gap-1.5">
-      <span className="metric text-[12px] font-medium tracking-tight text-white/85">{value}</span>
+      <span className="font-display text-[13px] font-medium tracking-tight text-white/85">{value}</span>
       <span className="metric text-[9px] tracking-[0.12em] text-white/30 uppercase">{label}</span>
     </span>
   )

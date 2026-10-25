@@ -5,7 +5,7 @@ import { ActivityHeatMap } from './components/ActivityHeatMap'
 import { DateRibbon } from './components/DateRibbon'
 import { Hero } from './components/Hero'
 import { NavBar } from './components/NavBar'
-import { NudgeDock } from './components/NudgeDock'
+import { LoveNote } from './components/LoveNote'
 import { Footer, OrbitLog } from './components/OrbitLog'
 import { LoadLine } from './components/LoadLine'
 import { ParticleField } from './components/ParticleField'
@@ -31,7 +31,7 @@ function FirstTimeIdentityBanner() {
       initial={{ opacity: 0, y: 22, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.55, ease: EASE }}
-      className="fixed inset-x-3 bottom-3 z-[60] mx-auto max-w-md overflow-hidden rounded-2xl border border-white/[0.12] bg-[#0b0c11]/94 p-4 shadow-[0_30px_80px_-30px_rgba(0,0,0,0.95)] backdrop-blur-2xl sm:bottom-5"
+      className="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-[60] mx-auto max-w-md overflow-hidden rounded-2xl border border-white/[0.12] bg-[#0B0C11]/94 p-4 shadow-[0_30px_80px_-30px_rgba(0,0,0,0.95)] backdrop-blur-2xl sm:bottom-[calc(1.25rem+env(safe-area-inset-bottom))]"
     >
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
       <div className="flex flex-col gap-3">
@@ -40,8 +40,8 @@ function FirstTimeIdentityBanner() {
             ✦
           </span>
           <div className="min-w-0">
-            <p className="text-[12.5px] font-medium tracking-tight text-white/95">Choose your orbit</p>
-            <p className="mt-0.5 text-[11px] leading-snug text-white/45">
+            <p className="text-[12.5px] font-medium tracking-tight text-white/97">Choose your orbit</p>
+            <p className="mt-0.5 text-[11px] leading-snug text-white/60">
               Personalises live presence, nudges and your partner&apos;s view.
             </p>
           </div>
@@ -165,14 +165,14 @@ function Shell() {
             <DateRibbon />
           </Reveal>
 
-          {/* Shared utilities: nudge dock beside the scratchpad. */}
+          {/* Shared utilities: love note beside the scratchpad. */}
           <Reveal delay={0.08}>
             <section
-              aria-label="Shared utilities"
+              aria-label="Love note and shared scratchpad"
               className="grid items-start gap-3 sm:gap-4 lg:grid-cols-12"
             >
               <div className="min-w-0 lg:col-span-7">
-                <NudgeDock />
+                <LoveNote />
               </div>
               <div className="min-w-0 lg:col-span-5">
                 <SharedScratchpad />

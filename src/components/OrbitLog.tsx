@@ -9,7 +9,7 @@ import { addDays, todayISO, weekdayShort } from '../lib/date'
 function Stat({ label, value, tone }: { label: string; value: string; tone?: string }) {
   return (
     <div className="min-w-0 sm:border-l sm:border-white/[0.06] sm:pl-5 sm:first:border-l-0 sm:first:pl-0">
-      <div className="label-mono text-[9.5px] text-white/45">{label}</div>
+      <div className="label-mono text-[9.5px] text-white/60">{label}</div>
       <div
         className="font-display mt-2.5 text-[clamp(26px,5vw,38px)] leading-none font-medium"
         style={{ color: tone ?? 'rgba(255,255,255,0.95)' }}
@@ -45,7 +45,7 @@ function WeekRhythm() {
     <div className="mt-5 border-t border-white/[0.07] pt-4">
       <div className="flex items-center justify-between gap-3">
         <span className="label-mono text-[9px]">Last 7 days</span>
-        <span className="metric text-[9px] tracking-[0.12em] text-white/30 uppercase">{total} done</span>
+        <span className="metric text-[9px] tracking-[0.12em] text-white/45 uppercase">{total} done</span>
       </div>
 
       <div
@@ -74,8 +74,8 @@ function WeekRhythm() {
                 />
               </div>
               <span
-                className={`metric text-[8px] tracking-[0.08em] uppercase ${
-                  isToday ? 'text-[#F59E0B]' : 'text-white/35'
+                className={`metric text-[9px] tracking-[0.08em] uppercase ${
+                  isToday ? 'text-[#F59E0B]' : 'text-white/50'
                 }`}
               >
                 {weekdayShort(day.iso).slice(0, 1)}
@@ -108,7 +108,7 @@ export function OrbitLog() {
       <div className="flex items-center gap-3">
         <span className="label-mono">Orbit log</span>
         <span className="h-px flex-1 bg-white/[0.08]" />
-        <span className="metric text-[10px] tracking-[0.14em] text-white/30">ALL TIME</span>
+        <span className="metric text-[10px] tracking-[0.14em] text-white/45">ALL TIME</span>
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-x-5 gap-y-5 sm:grid-cols-4">
@@ -126,25 +126,25 @@ export function OrbitLog() {
 export function Footer() {
   return (
     <footer className="mt-auto border-t border-white/[0.07] bg-black/[0.18] backdrop-blur-[6px]">
-      <div className="mx-auto flex w-full max-w-[1200px] flex-wrap items-center gap-x-4 gap-y-2 px-4 py-5 sm:px-6">
-        <span className="flex items-center gap-2 text-[11px] tracking-tight text-white/40">
+      <div className="mx-auto flex w-full max-w-[1200px] flex-wrap items-center gap-x-4 gap-y-2 px-4 pt-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:px-6">
+        <span className="flex items-center gap-2 text-[11px] tracking-tight text-white/55">
           <img src="/logo.png" alt="SyncOrbit" className="size-4 object-contain" />
           <span className="font-display tracking-[0.2em] uppercase">{BRAND.name}</span>
-          <span className="hidden text-white/20 sm:inline">— {BRAND.tagline}</span>
+          <span className="hidden text-white/32 min-[380px]:inline">— {BRAND.tagline}</span>
         </span>
 
         <span className="ml-auto flex items-center gap-3">
-          <span className="hidden items-center gap-1.5 font-mono text-[9px] tracking-[0.14em] text-white/25 uppercase sm:inline-flex">
-            <kbd className="rounded border border-white/[0.1] bg-white/[0.04] px-1 py-px text-[8px] text-white/45">N</kbd>
+          <span className="hidden items-center gap-1.5 font-mono text-[9px] tracking-[0.14em] text-white/38 uppercase sm:inline-flex">
+            <kbd className="rounded border border-white/[0.1] bg-white/[0.04] px-1 py-px text-[9px] text-white/60">N</kbd>
             new task
-            <span className="text-white/15">·</span>
-            <kbd className="rounded border border-white/[0.1] bg-white/[0.04] px-1 py-px text-[8px] text-white/45">T</kbd>
+            <span className="text-white/25">·</span>
+            <kbd className="rounded border border-white/[0.1] bg-white/[0.04] px-1 py-px text-[9px] text-white/60">T</kbd>
             today
           </span>
 
           <a
             href="#top"
-            className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[10px] font-medium tracking-tight text-white/45 transition-colors hover:border-white/[0.16] hover:bg-white/[0.06] hover:text-white/80"
+            className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[10px] font-medium tracking-tight text-white/60 transition-colors hover:border-white/[0.16] hover:bg-white/[0.06] hover:text-white/88"
           >
             Top
             <ArrowUp className="size-3" strokeWidth={2.2} />

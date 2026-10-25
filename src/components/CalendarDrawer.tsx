@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { useEffect, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { PARTNERS } from '../lib/constants'
 import { monthGrid, monthIndexOf, monthName, todayISO, formatLong } from '../lib/date'
 import { playUiTick } from '../lib/audio'
@@ -33,7 +34,12 @@ export function CalendarDrawer({ open, onClose, cursor, onCursorChange }: Props)
       if (event.key === 'ArrowRight') onCursorChange(shiftMonth(cursor, 1))
     }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      document.body.style.overflow = previousOverflow
+    }
   }, [open, onClose, onCursorChange, cursor])
 
   const marks = useMemo(() => {
@@ -53,7 +59,7 @@ export function CalendarDrawer({ open, onClose, cursor, onCursorChange }: Props)
   const cells = useMemo(() => monthGrid(cursor.year, cursor.month), [cursor])
   const today = todayISO()
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {open && (
         <motion.div
@@ -78,7 +84,7 @@ export function CalendarDrawer({ open, onClose, cursor, onCursorChange }: Props)
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.985 }}
             transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-            className="glass relative z-10 w-full max-w-[400px] p-4"
+            className="glass relative z-10 max-h-[92dvh] w-full max-w-[400px] overflow-y-auto overscroll-contain p-4"
           >
             <div className="flex items-center gap-2">
               <button
@@ -90,7 +96,7 @@ export function CalendarDrawer({ open, onClose, cursor, onCursorChange }: Props)
                 <ChevronLeft className="size-4" strokeWidth={2} />
               </button>
               <div className="mr-auto text-center">
-                <div className="text-[13px] font-medium tracking-tight text-white/90">
+                <div className="text-[13px] font-medium tracking-tight text-white/94">
                   {monthName(cursor.month)} {cursor.year}
                 </div>
                 <div className="label-mono mt-0.5">Jump to any board</div>
@@ -146,8 +152,8 @@ export function CalendarDrawer({ open, onClose, cursor, onCursorChange }: Props)
                           : isTodayCell
                             ? 'text-[#F59E0B]'
                             : inMonth
-                              ? 'text-white/65'
-                              : 'text-white/20'
+                              ? 'text-white/76'
+                              : 'text-white/32'
                       }`}
                     >
                       {Number(iso.slice(8, 10))}
@@ -175,7 +181,7 @@ export function CalendarDrawer({ open, onClose, cursor, onCursorChange }: Props)
             </div>
 
             <div className="mt-4 flex items-center gap-3 border-t border-white/[0.08] pt-3">
-              <span className="metric text-[10px] tracking-[0.12em] text-white/25">
+              <span className="metric text-[10px] tracking-[0.12em] text-white/38">
                 <span className="text-[#00F2FE]">●</span> SHIVAM&nbsp;&nbsp;
                 <span className="text-[#FFB199]">●</span> NOOR
               </span>
@@ -195,7 +201,8 @@ export function CalendarDrawer({ open, onClose, cursor, onCursorChange }: Props)
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   )
 }
 

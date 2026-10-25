@@ -37,14 +37,14 @@ export function SharedScratchpad() {
     <section className="glass flex flex-col p-4 sm:p-5" aria-label="Shared scratchpad">
       <div className="mb-2.5 flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
-          <span className={hasNote ? 'text-[#00F2FE]' : 'text-white/45'}>
+          <span className={hasNote ? 'text-[#00F2FE]' : 'text-white/60'}>
             <Edit3 className="size-3.5" strokeWidth={1.9} />
           </span>
           <span className="label-mono">Shared Scratchpad</span>
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
-          <span className="metric flex items-center gap-1.5 text-[10px] tracking-[0.12em] text-white/30 uppercase">
+          <span className="metric flex items-center gap-1.5 text-[10px] tracking-[0.12em] text-white/45 uppercase">
             <span
               className={`size-1.5 rounded-full ${
                 focused
@@ -62,7 +62,7 @@ export function SharedScratchpad() {
             <button
               type="button"
               onClick={handleClear}
-              className="grid size-7 place-items-center rounded-full border border-white/[0.08] text-white/40 transition-colors hover:border-[#FF0844]/35 hover:text-[#FF0844]"
+              className="grid size-7 place-items-center rounded-full border border-white/[0.08] text-white/55 transition-colors hover:border-[#FF0844]/35 hover:text-[#FF0844]"
               aria-label="Clear the shared scratchpad"
               title="Clear note"
             >
@@ -84,14 +84,14 @@ export function SharedScratchpad() {
         maxLength={MAX_LENGTH}
         placeholder={`Leave a quick note, grocery item, or thought for ${partnerName}…`}
         aria-label={`Shared scratchpad note for ${partnerName}`}
-        className="w-full flex-1 resize-none rounded-xl border border-white/[0.08] bg-black/20 p-3 text-[12.5px] leading-relaxed text-white/90 transition-all placeholder:text-white/25 focus:border-[#00F2FE]/40 focus:bg-black/40 focus:outline-none"
+        className="w-full flex-1 resize-none rounded-xl border border-white/[0.08] bg-black/20 p-3 text-[12.5px] leading-relaxed text-white/94 transition-all placeholder:text-white/38 focus:border-[#00F2FE]/40 focus:bg-black/40 focus:outline-none"
       />
 
       <div className="mt-2.5 flex items-center justify-between gap-3 border-t border-white/[0.07] pt-2.5">
-        <span className="metric text-[9.5px] tracking-[0.12em] text-white/30 uppercase">
+        <span className="metric text-[9.5px] tracking-[0.12em] text-white/45 uppercase">
           Real-time with {partnerName}
         </span>
-        <span className="metric text-[9.5px] tracking-[0.12em] text-white/25">
+        <span className="metric text-[9.5px] tracking-[0.12em] text-white/38">
           {value.length}/{MAX_LENGTH} · auto-saved
         </span>
       </div>

@@ -74,25 +74,70 @@ const THEME_KEYWORDS = {
 }
 
 const SHIVAM_PHRASES = {
-  coding: ['turned his coding/DSA reps into a win', 'pushed through his dev and DSA goals', 'shipped his coding milestones'],
-  medical: ['locked in on his study blocks', 'kept his revision sharp'],
-  fitness: ['kept his training streak alive'],
-  reading: ['cleared his reading goals'],
-  creative: ['brought his creative work forward'],
-  general: ['moved his orbit forward', 'checked off his plan for the day'],
+  coding: [
+    'turned his DSA reps into a personality trait',
+    'argued with bugs and actually won',
+    'shipped code like the deadline owed him money',
+    'acted like one clean commit could fix his entire reputation',
+    'made his side project sound like a startup with investors',
+  ],
+  medical: [
+    'treated his study blocks like a personal rivalry',
+    'kept his revision sharp enough to cut',
+    'studied like the syllabus had personally insulted him',
+  ],
+  fitness: [
+    'kept the training streak alive, annoyingly so',
+    'made the gym look like a personality requirement',
+    'treated leg day like a character flaw he could fix',
+  ],
+  reading: [
+    'cleared his reading list like a man with something to prove',
+    'read one chapter and called it a lifestyle',
+  ],
+  creative: [
+    'made his creative work look suspiciously effortless',
+    'called an unfinished draft “almost done” with a straight face',
+  ],
+  general: [
+    'moved his orbit forward',
+    'checked boxes like it was a competitive sport',
+    'did the minimum with maximum confidence',
+    'acted busy enough to avoid being asked for more',
+  ],
 }
 
 const NOOR_PHRASES = {
   medical: [
-    'crushed her medical prep',
-    'advanced her studies with real focus',
-    'owned her DPP and revision',
+    'made her medical prep look unfairly easy',
+    'studied like the syllabus owed her money',
+    'put her DPPs in a headlock',
+    'treated revision like a group project she refused to carry',
   ],
-  coding: ['sharpened her coding reps', 'worked cleanly through her tech tasks'],
-  fitness: ['kept her training streak alive'],
-  reading: ['cleared her reading goals'],
-  creative: ['brought her creative work forward'],
-  general: ['moved her orbit forward', 'checked off her plan for the day'],
+  coding: [
+    'sharpened her coding reps and kept the bugs nervous',
+    'debugged like she was personally offended by the error',
+    'wrote code that made Shivam pretend not to be impressed',
+  ],
+  fitness: [
+    'kept the training streak alive, annoyingly so',
+    'made the gym look like a personality requirement',
+    'made cardio look like a personal vendetta',
+  ],
+  reading: [
+    'cleared her reading goals without breaking a sweat',
+    'finished a chapter and acted like she had run a marathon',
+  ],
+  creative: [
+    'made her creative work look suspiciously effortless',
+    'made Shivam’s drafts look like rough drafts',
+  ],
+  general: [
+    'moved her orbit forward',
+    'checked boxes like it was a competitive sport',
+    'did the work quietly and let Shivam think he was in charge',
+    'made productivity look like a personality flex',
+  ],
 }
 
 /* ------------------------------------------------------------------ *
@@ -135,6 +180,28 @@ function phraseFor(person, theme, variant) {
 
 const pick = (list, variant) => list[Math.abs(variant) % list.length]
 
+/** Keeps the recap honest: a partner with nothing done gets a bench joke, not a fake win. */
+function teasePhrase(person, theme, variant, done) {
+  if (done > 0) return phraseFor(person, theme, variant)
+  return person === 'noor'
+    ? pick(
+        [
+          'watched the plan from a safe distance',
+          'provided moral support and zero completed tasks',
+          'kept the bench warm with style',
+        ],
+        variant,
+      )
+    : pick(
+        [
+          'watched the plan from the sidelines',
+          'provided strategic commentary and zero completed tasks',
+          'kept the bench warm with confidence',
+        ],
+        variant,
+      )
+}
+
 /**
  * Builds a polished one-sentence recap from both partners' tasks for a date.
  *
@@ -156,44 +223,71 @@ function generateDailyRecap(shivamTasks = [], noorTasks = [], dateStr = todayISO
 
   const sTheme = themeOf(shivamTasks)
   const nTheme = themeOf(noorTasks)
-  const sPhrase = phraseFor('shivam', sTheme, variant)
-  const nPhrase = phraseFor('noor', nTheme, variant)
+  const sPhrase = teasePhrase('shivam', sTheme, variant, s.done)
+  const nPhrase = teasePhrase('noor', nTheme, variant + 1, n.done)
 
   let line
 
   if (total === 0) {
     line = pick(
       [
-        'A quiet orbit today: no steps logged, just open sky. Tomorrow’s constellation is already forming.',
-        'Still waters in orbit: nothing logged today. Rest is part of the rhythm, and the board waits patiently.',
-        'An empty ledger under a calm sky. Today asked for stillness — tomorrow asks for motion.',
+        'Zero tasks between you. Shivam is calling it “recovery”; Noor is calling it “research.” The board is calling it a group nap.',
+        'An empty board — Shivam’s ambition and Noor’s to-do list both took the day off. Suspicious. Cute, but suspicious.',
+        'Nothing logged. Shivam says he was “strategizing”; Noor says she was “resting.” The board has heard better alibis.',
+        'The board is spotless, which is one way to say Shivam and Noor ghosted their own plans. Tomorrow, presumably, with feeling.',
+        'No tasks done. You two have successfully optimized the day for doing absolutely nothing. The board is impressed and a little concerned.',
+        'A completely empty orbit. Shivam and Noor are either resting, plotting, or waiting for the other one to go first.',
       ],
       variant,
     )
   } else if (combinedSync >= 100) {
     line = pick(
       [
-        'An unstoppable day in orbit: Shivam and Noor achieved a flawless 100% combined sync. Every milestone conquered.',
-        `Flawless orbit at 100% sync — Shivam ${sPhrase}, and Noor ${nPhrase}. Nothing left on the board.`,
-        `A perfect 100% combined sync. Shivam ${sPhrase}; Noor ${nPhrase}. A day built to remember.`,
+        '100% sync. Shivam and Noor cleared every task and are now legally insufferable. The board has never been so smug.',
+        `A flawless 100% — Shivam ${sPhrase}, and Noor ${nPhrase}. Show-offs, both of you. The board never stood a chance.`,
+        `100% done. Shivam ${sPhrase}; Noor ${nPhrase}. Perfect sync, zero humility. Tomorrow has a tough act to follow.`,
+        'Every task cleared. Shivam is acting like he invented productivity; Noor is letting him think that. 100% sync, 0% modesty.',
+        'A clean sweep for Shivam and Noor. One of you is gloating; the other is pretending not to. The board approves, reluctantly.',
+        '100% sync. You two are now unbearably competent. The board would like a moment alone to process it.',
       ],
       variant,
     )
   } else if (combinedSync > 50) {
     line = pick(
       [
-        `A productive stride: Shivam ${sPhrase} while Noor ${nPhrase} — a solid ${combinedSync}% combined sync today.`,
-        `Strong momentum today: Shivam ${sPhrase} and Noor ${nPhrase}, reaching ${combinedSync}% combined sync.`,
-        `${combinedSync}% in sync — Shivam ${sPhrase} while Noor ${nPhrase}. The orbit is holding steady.`,
+        `${combinedSync}% sync. Shivam ${sPhrase} while Noor ${nPhrase}. Not perfect, but the orbit is definitely flexing.`,
+        `A respectable ${combinedSync}%: Shivam ${sPhrase} and Noor ${nPhrase}. The board survived, mostly.`,
+        `${combinedSync}% combined sync — Shivam ${sPhrase}, Noor ${nPhrase}. Solid work, with just enough unfinished business to keep tomorrow interesting.`,
+        `${combinedSync}% sync. Shivam is carrying the “vision”; Noor is carrying the actual tasks. The board is taking notes.`,
+        `A decent ${combinedSync}%. Shivam and Noor left just enough undone to blame each other tomorrow. Efficient, honestly.`,
+        `${combinedSync}% sync. You two are almost a functional team — don’t ruin it by talking about it.`,
+        `${combinedSync}% done. Shivam made sure everyone knew; Noor made sure it was actually done. The board is not commenting.`,
+      ],
+      variant,
+    )
+  } else if (done === 0) {
+    line = pick(
+      [
+        `${total} tasks, zero done. Shivam claims strategy; Noor claims standards. The board claims both of you owe it an apology.`,
+        `Zero of ${total} done. Shivam and Noor have successfully converted a to-do list into a museum exhibit.`,
+        `0% sync. The tasks are all still there, gleaming with potential. Shivam and Noor are “getting to them” — eventually.`,
+        `A bold 0-of-${total} effort. Shivam and Noor did the easy bits — namely, nothing. Tomorrow can pick up the slack.`,
+        `0% done. You two left the heavy lifting for tomorrow, which is a very cute way to say “nope” — adorable.`,
+        `Nothing done yet. Shivam and Noor are pacing themselves — at this rate, tomorrow is going to be very busy.`,
       ],
       variant,
     )
   } else {
     line = pick(
       [
-        `Quiet momentum: ${done} of ${total} steps completed (${combinedSync}% combined sync). Every small action builds tomorrow’s orbit.`,
-        `Steady progress: ${done} of ${total} steps done — ${combinedSync}% combined sync. Small orbits compound.`,
-        `A measured day: ${done} of ${total} complete. Shivam ${sPhrase}; Noor ${nPhrase}. Tomorrow continues the arc.`,
+        `${combinedSync}% sync. Shivam ${sPhrase}; Noor ${nPhrase}. The orbit is still warming up — no need to alert the press.`,
+        `A bold ${done}-of-${total} effort: Shivam ${sPhrase}, Noor ${nPhrase}. Tomorrow can pick up the slack.`,
+        `${combinedSync}% done. One of you is “warming up”; the other is already composing excuses. The board isn’t buying either.`,
+        `Only ${done} of ${total} done. Shivam claims strategy; Noor claims standards. The board claims both of you owe it an apology.`,
+        `${combinedSync}% sync. You two left the heavy lifting for tomorrow, which is a very cute way to say “nope” — adorable.`,
+        `${done} of ${total} done. Shivam and Noor are pacing themselves — at this rate, tomorrow is going to be very busy.`,
+        `${combinedSync}% sync. Shivam and Noor did the easy bits and saved the character development for tomorrow.`,
+        `${done} of ${total} done (${combinedSync}% sync). Shivam and Noor did just enough to keep the board from filing a complaint. Tomorrow’s redemption arc starts now.`,
       ],
       variant,
     )
@@ -209,16 +303,22 @@ function generateDailyRecap(shivamTasks = [], noorTasks = [], dateStr = todayISO
  * ------------------------------------------------------------------ */
 
 function buildPrompt(dateStr, shivamTasks, noorTasks) {
+  const s = summarize(shivamTasks)
+  const n = summarize(noorTasks)
+  const total = s.total + n.total
+  const done = s.done + n.done
+  const sync = total > 0 ? Math.round((done / total) * 100) : 0
   const fmt = (tasks) =>
     tasks.length
       ? tasks.map((task) => `"${task.title}"${task.done ? ' (done)' : ' (pending)'}`).join(', ')
       : 'none logged'
   return [
-    "Summarize today's progress for Shivam and Noor in one sophisticated, encouraging sentence (under 25 words).",
+    "Write a playful, teasing recap of Shivam and Noor’s day — like a friend who knows them too well and is affectionately roasting both of them.",
+    `Shivam: ${s.done}/${s.total} done. Noor: ${n.done}/${n.total} done. Combined sync: ${sync}%.`,
     `Shivam's tasks: ${fmt(shivamTasks)}.`,
     `Noor's tasks: ${fmt(noorTasks)}.`,
     `Date: ${dateStr}.`,
-    'Do not use emojis or icons; keep the sentence typographic and editorial.',
+    'Mention both names. Use the real numbers or task details. One or two short sentences, under 32 words total. Cheeky and specific, never cruel, never generic, no emojis, no icons.',
   ].join(' ')
 }
 
@@ -268,7 +368,7 @@ async function requestAiVoice({ apiKey, date, shivamTasks, noorTasks }) {
           {
             role: 'system',
             content:
-              "You are SyncOrbit, an elegant evening journal that summarizes two people's progress. Reply with one refined, warm sentence only. Never cheesy. No emojis or icons.",
+              "You are SyncOrbit, a cheeky evening narrator who knows Shivam and Noor too well. Reply with one or two short, playful, teasing sentences that affectionately roast both of them. Mention both names, use the real numbers or task details. Never cruel, never generic, never cheesy. No emojis or icons.",
           },
           { role: 'user', content: prompt },
         ],
@@ -304,7 +404,10 @@ async function requestAiVoice({ apiKey, date, shivamTasks, noorTasks }) {
 }
 
 /* ------------------------------------------------------------------ *
- *  Firebase persistence (`${db}/recaps/${date}.json`)
+ *  Firebase persistence (`${db}/recaps/v3/${date}.json`)
+ *
+ *  The `v3` namespace keeps the new teasing voice from being masked by the
+ *  older recaps saved under `recaps/` and `recaps/v2/`.
  * ------------------------------------------------------------------ */
 
 const trimBase = (url) => `${url ?? ''}`.replace(/\/+$/, '')
@@ -313,7 +416,7 @@ async function fetchRemoteRecap(firebaseDbUrl, dateStr) {
   const base = trimBase(firebaseDbUrl)
   if (!base) return null
   try {
-    const res = await fetch(`${base}/recaps/${dateStr}.json`)
+    const res = await fetch(`${base}/recaps/v3/${dateStr}.json`)
     if (!res.ok) return null
     const data = await res.json()
     if (typeof data === 'string' && data.trim()) return data
@@ -329,7 +432,7 @@ async function saveRemoteRecap(firebaseDbUrl, dateStr, text) {
   const clean = sanitizeVoice(text)
   if (!base || !clean) return
   try {
-    await fetch(`${base}/recaps/${dateStr}.json`, {
+    await fetch(`${base}/recaps/v3/${dateStr}.json`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(clean),
@@ -489,15 +592,8 @@ export function SyncVoiceCapsule() {
         className="pointer-events-none absolute -bottom-28 -left-20 size-64 rounded-full bg-[radial-gradient(circle,rgba(0,242,254,0.12),transparent_70%)]"
       />
 
-      <div className="relative flex flex-wrap items-center justify-between gap-3">
-        <span className="inline-flex items-center gap-2 rounded-full border border-white/[0.1] bg-white/[0.04] px-3 py-1.5 shadow-[0_0_24px_-12px_rgba(245,158,11,0.55)]">
-          <span className="text-[11px] leading-none text-[#F59E0B]" aria-hidden="true">
-            ✦
-          </span>
-          <span className="label-mono !text-white/70">Daily Sync Voice</span>
-        </span>
-
-        <span className="metric text-[10px] tracking-[0.14em] text-white/35 uppercase">
+      <div className="relative flex flex-wrap items-center justify-end gap-3">
+        <span className="metric text-[10px] tracking-[0.14em] text-white/50 uppercase">
           {formatLong(viewDate)}
         </span>
       </div>
@@ -511,14 +607,14 @@ export function SyncVoiceCapsule() {
         </span>
         <p
           aria-live="polite"
-          className="relative font-serif text-[21px] leading-[1.45] tracking-[-0.005em] text-balance text-white/92 sm:text-[27px]"
+          className="relative font-serif text-[21px] leading-[1.45] tracking-[-0.005em] text-balance text-white/95 sm:text-[27px]"
         >
           {busy && !recap ? (
-            <span className="inline-flex items-center gap-2 font-sans text-[13px] tracking-tight text-white/50">
+            <span className="inline-flex items-center gap-2 font-sans text-[13px] tracking-tight text-white/64">
               <Loader2 className="size-4 animate-spin" /> Composing today’s voice…
             </span>
           ) : (
-            recap || <span className="font-sans text-[13px] text-white/35">Synthesizing…</span>
+            recap || <span className="font-sans text-[13px] text-white/50">Synthesizing…</span>
           )}
         </p>
       </div>

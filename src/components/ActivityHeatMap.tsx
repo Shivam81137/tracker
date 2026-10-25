@@ -9,21 +9,24 @@ const GAP = 2
 
 const WEEKDAY_ROWS = ['Mon', '', 'Wed', '', 'Fri', '', ''] as const
 
-/** Level → flavour, moving from cold cyan through amber to hot coral. */
+/** Level → flavour, moving from cold cyan through green and amber to hot coral. */
 const LEVEL_CLASS = [
   'bg-white/[0.075] ring-1 ring-inset ring-white/[0.03]',
-  'bg-[#00F2FE]/25',
-  'bg-[#00F2FE]/45',
-  'bg-[#F59E0B]/70',
-  'bg-[#FF0844]/85 shadow-[0_0_10px_rgba(255,8,68,0.55)]',
+  'bg-[#00F2FE]/22',
+  'bg-[#00F2FE]/40',
+  'bg-[#22D3EE]/58',
+  'bg-[#34D399]/68',
+  'bg-[#4ADE80]/74',
+  'bg-[#A3E635]/80',
+  'bg-[#F59E0B]/86',
+  'bg-[#FF0844]/92 shadow-[0_0_10px_rgba(255,8,68,0.5)]',
 ] as const
+
+const TOP_LEVEL = LEVEL_CLASS.length - 1
 
 function levelFor(count: number): number {
   if (count <= 0) return 0
-  if (count === 1) return 1
-  if (count === 2) return 2
-  if (count <= 4) return 3
-  return 4
+  return Math.min(count, TOP_LEVEL)
 }
 
 interface DayCount {
@@ -122,7 +125,7 @@ export function ActivityHeatMap() {
       <div className="flex items-center gap-3">
         <span className="label-mono">Activity</span>
         <span className="h-px flex-1 bg-white/[0.08]" />
-        <span className="metric text-[10px] tracking-[0.14em] text-white/30">LAST YEAR</span>
+        <span className="metric text-[10px] tracking-[0.14em] text-white/45">LAST YEAR</span>
       </div>
 
       <div className="mt-4 flex gap-2.5">
@@ -137,7 +140,7 @@ export function ActivityHeatMap() {
             {WEEKDAY_ROWS.map((label, index) => (
               <span
                 key={index}
-                className="flex items-center font-mono text-[8px] tracking-[0.08em] text-white/35"
+                className="flex items-center font-mono text-[9px] tracking-[0.08em] text-white/50"
               >
                 {label}
               </span>
@@ -156,7 +159,7 @@ export function ActivityHeatMap() {
                 <span
                   key={`${month.label}-${month.start}`}
                   style={{ gridColumn: `${month.start + 1} / span ${month.span}` }}
-                  className="font-mono text-[8px] tracking-[0.14em] text-white/35 uppercase"
+                  className="font-mono text-[9px] tracking-[0.14em] text-white/50 uppercase"
                 >
                   {month.label}
                 </span>
@@ -188,7 +191,7 @@ export function ActivityHeatMap() {
                         future ? 'opacity-25' : ''
                       } ${
                         iso === today
-                          ? 'ring-1 ring-white/40 ring-offset-1 ring-offset-[#0b0b0f]'
+                          ? 'ring-1 ring-white/40 ring-offset-1 ring-offset-[#0B0B0F]'
                           : ''
                       }`}
                     />
@@ -208,11 +211,11 @@ export function ActivityHeatMap() {
         </div>
 
         <div className="flex items-center gap-1.5" aria-hidden="true">
-          <span className="font-mono text-[8.5px] tracking-[0.12em] text-white/30 uppercase">Less</span>
+          <span className="font-mono text-[9px] tracking-[0.12em] text-white/45 uppercase">Less</span>
           {LEVEL_CLASS.map((cls) => (
             <span key={cls} className={`size-[11px] rounded-[3px] ${cls}`} />
           ))}
-          <span className="font-mono text-[8.5px] tracking-[0.12em] text-white/30 uppercase">More</span>
+          <span className="font-mono text-[9px] tracking-[0.12em] text-white/45 uppercase">More</span>
         </div>
       </div>
     </section>
@@ -222,8 +225,8 @@ export function ActivityHeatMap() {
 function Stat({ label, value }: { label: string; value: number }) {
   return (
     <span className="flex items-baseline gap-1.5">
-      <span className="font-display text-[13px] font-medium tracking-tight text-white/85">{value}</span>
-      <span className="metric text-[9px] tracking-[0.12em] text-white/30 uppercase">{label}</span>
+      <span className="font-display text-[13px] font-medium tracking-tight text-white/90">{value}</span>
+      <span className="metric text-[9px] tracking-[0.12em] text-white/45 uppercase">{label}</span>
     </span>
   )
 }

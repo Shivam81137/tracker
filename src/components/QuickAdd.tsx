@@ -1,6 +1,18 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { ChevronDown, Clock, CornerDownLeft, Flag, Link2, Plus, RotateCcw, SlidersHorizontal } from 'lucide-react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  ChevronDown,
+  Clock,
+  CornerDownLeft,
+  Flag,
+  Flame,
+  Leaf,
+  Link2,
+  Plus,
+  RotateCcw,
+  SlidersHorizontal,
+  X,
+} from 'lucide-react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { PARTNERS, PRIORITIES, PRIORITY_MAP } from '../lib/constants'
 import { formatTime, isToday, relativeDayLabel } from '../lib/date'
 import { playTick, playUiTick } from '../lib/audio'
@@ -11,6 +23,25 @@ import type { Person, Priority } from '../lib/types'
 interface Props {
   owner: Person
 }
+
+const PRIORITY_ICON: Record<Priority, typeof Flame> = {
+  high: Flame,
+  med: Flag,
+  chill: Leaf,
+}
+
+const PRIORITY_HINT: Record<Priority, string> = {
+  high: 'Sorts first and adds a coral rail.',
+  med: 'Balanced default for everyday tasks.',
+  chill: 'Low pressure — no accent rail.',
+}
+
+const QUICK_TIMES = [
+  { label: '9 AM', value: '09:00' },
+  { label: 'Noon', value: '12:00' },
+  { label: '6 PM', value: '18:00' },
+  { label: '9 PM', value: '21:00' },
+] as const
 
 /**
  * Per-board quick add.
@@ -118,7 +149,10 @@ export function QuickAdd({ owner }: Props) {
 
       <div className="flex items-center gap-1.5">
         {/* Title — the only always-visible control */}
-        <div className="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 transition-colors focus-within:border-white/[0.2]">
+        <div
+          className="field-accent flex min-w-0 flex-1 items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5"
+          style={{ '--field-accent': partner.from } as CSSProperties}
+        >
           <Plus
             className="size-3.5 shrink-0"
             style={{ color: `color-mix(in oklab, ${partner.from} 75%, transparent)` }}
@@ -138,10 +172,10 @@ export function QuickAdd({ owner }: Props) {
             placeholder={`Add for ${partner.name}…`}
             maxLength={160}
             aria-label={`New task for ${partner.name}`}
-            className="min-w-0 flex-1 bg-transparent text-[13px] tracking-tight text-white/92 placeholder:text-white/28 focus:outline-none"
+            className="min-w-0 flex-1 bg-transparent text-[13px] tracking-tight text-white/95 placeholder:text-white/42 focus:outline-none"
           />
           {ready && (
-            <span className="metric hidden shrink-0 text-[9.5px] tracking-[0.14em] text-white/22 sm:inline">↵ ENTER</span>
+            <span className="metric hidden shrink-0 text-[9.5px] tracking-[0.14em] text-white/35 sm:inline">↵ ENTER</span>
           )}
         </div>
 
@@ -159,13 +193,13 @@ export function QuickAdd({ owner }: Props) {
               ? `${partner.name}'s task options — ${summary}. Click to change.`
               : `${partner.name}'s task options — reminder, priority, both orbits`
           }
-          className={`pill h-8 max-w-[52%] shrink-0 ${tweaked ? 'border-white/[0.2] text-white/90' : 'pill-hover'}`}
+          className={`pill h-8 max-w-[52%] shrink-0 ${tweaked ? 'border-white/[0.2] text-white/94' : 'pill-hover'}`}
         >
           <SlidersHorizontal className="size-3.5 shrink-0" strokeWidth={2.1} />
-          {/* The full summary only appears where there is room for it; on a
-              narrow phone an amber dot marks "something other than default". */}
-          {tweaked && <span className="size-1.5 shrink-0 rounded-full bg-[#F59E0B] shadow-[0_0_6px_#F59E0B] sm:hidden" />}
-          <span className="metric hidden truncate text-[10px] tracking-[0.12em] sm:inline">
+          {/* Narrow phones get an amber dot; from 400px the real summary is
+              shown so the active options are never hidden. */}
+          {tweaked && <span className="size-1.5 shrink-0 rounded-full bg-[#F59E0B] shadow-[0_0_6px_#F59E0B] min-[360px]:hidden" />}
+          <span className="metric hidden truncate text-[10px] tracking-[0.12em] min-[360px]:inline">
             {tweaked ? summary : 'OPTIONS'}
           </span>
           <ChevronDown
@@ -180,7 +214,7 @@ export function QuickAdd({ owner }: Props) {
           whileTap={{ scale: 0.95 }}
           onClick={submit}
           disabled={!ready}
-          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-white/[0.14] bg-white/[0.08] px-3 text-[11px] font-medium tracking-tight text-white/90 transition-all duration-200 hover:border-white/25 hover:bg-white/[0.14] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-35 sm:px-3.5"
+          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-white/[0.14] bg-white/[0.08] px-3 text-[11px] font-medium tracking-tight text-white/94 transition-all duration-200 hover:border-white/25 hover:bg-white/[0.14] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-35 sm:px-3.5"
           style={
             ready
               ? {
@@ -219,7 +253,7 @@ export function QuickAdd({ owner }: Props) {
                   type="button"
                   onClick={resetDetails}
                   disabled={!tweaked}
-                  className="metric rounded-full border border-white/[0.1] bg-white/[0.04] px-2 py-0.5 text-[9px] tracking-[0.14em] text-white/45 uppercase transition-all duration-200 hover:border-white/20 hover:text-white/85 disabled:pointer-events-none disabled:opacity-0"
+                  className="metric rounded-full border border-white/[0.1] bg-white/[0.04] px-2 py-0.5 text-[9px] tracking-[0.14em] text-white/60 uppercase transition-all duration-200 hover:border-white/20 hover:text-white/90 disabled:pointer-events-none disabled:opacity-0"
                 >
                   Reset
                 </button>
@@ -228,69 +262,136 @@ export function QuickAdd({ owner }: Props) {
               {/* Two labelled fields share a row on wider cards and stack on phones. */}
               <div className="grid gap-3 px-3 py-3 sm:grid-cols-2 sm:gap-4">
                 <div className="min-w-0">
-                  <div className="mb-1.5 flex items-center gap-1.5 text-white/40">
+                  <div className="mb-1.5 flex h-6 items-center gap-1.5 text-white/55">
                     <Flag className="size-3" strokeWidth={2.2} />
-                    <span className="label-mono text-[9px]">Priority</span>
+                    <span className="label-mono text-[9px]">Priority mode</span>
                   </div>
                   <div
-                    className="flex items-center gap-1 rounded-lg border border-white/[0.07] bg-black/20 p-0.5"
+                    className="grid grid-cols-3 gap-1.5"
                     role="group"
-                    aria-label={`Priority for ${partner.name}'s task`}
+                    aria-label={`Priority mode for ${partner.name}'s task`}
                   >
                     {PRIORITIES.map((option) => {
                       const active = option.id === priority
+                      const Icon = PRIORITY_ICON[option.id]
+                      const hint = PRIORITY_HINT[option.id]
                       return (
-                        <button
+                        <motion.button
                           key={option.id}
                           type="button"
                           aria-pressed={active}
+                          aria-label={`${option.label} priority. ${hint}`}
+                          title={hint}
+                          whileTap={{ scale: 0.97 }}
                           onClick={() => {
                             playUiTick()
                             setPriority(option.id)
                           }}
-                          className="metric flex-1 rounded-md px-1.5 py-1 text-[9.5px] tracking-[0.12em] uppercase transition-all duration-200"
+                          className="relative flex h-9 items-center justify-center gap-1.5 overflow-hidden rounded-lg border text-[10px] font-medium tracking-tight transition-colors duration-200"
                           style={{
-                            color: active ? option.hex : 'rgba(255,255,255,0.45)',
+                            borderColor: active
+                              ? `color-mix(in oklab, ${option.hex} 48%, transparent)`
+                              : 'rgba(255,255,255,0.07)',
                             background: active
                               ? `color-mix(in oklab, ${option.hex} 14%, transparent)`
-                              : 'transparent',
+                              : 'rgba(255,255,255,0.02)',
+                            color: active ? option.hex : 'rgba(255,255,255,0.45)',
                             boxShadow: active
-                              ? `inset 0 0 0 1px color-mix(in oklab, ${option.hex} 40%, transparent)`
-                              : 'none',
+                              ? `inset 0 1px 0 rgba(255,255,255,0.08), 0 0 22px -14px ${option.hex}`
+                              : undefined,
                           }}
                         >
-                          {option.short}
+                          <Icon className="size-3.5" strokeWidth={2.2} />
+                          <span>{option.id === 'med' ? 'Medium' : option.label}</span>
+                          {active && (
+                            <motion.span
+                              layoutId={`priority-underline-${owner}`}
+                              className="absolute inset-x-3 bottom-0 h-px"
+                              style={{ background: option.hex, boxShadow: `0 0 8px ${option.hex}` }}
+                              transition={{ type: 'spring', stiffness: 520, damping: 38 }}
+                            />
+                          )}
+                        </motion.button>
+                      )
+                    })}
+                  </div>
+                  <p className="mt-1.5 flex items-start gap-1.5 text-[9.5px] leading-snug text-white/45">
+                    <span
+                      aria-hidden="true"
+                      className="mt-[3px] size-1 shrink-0 rounded-full"
+                      style={{ background: priorityMeta.hex }}
+                    />
+                    <span>{PRIORITY_HINT[priority]}</span>
+                  </p>
+                </div>
+
+                <div className="min-w-0">
+                  <div className="mb-1.5 flex h-6 items-center justify-between gap-2">
+                    <span className="flex items-center gap-1.5 text-white/55">
+                      <Clock className="size-3" strokeWidth={2.2} />
+                      <span className="label-mono text-[9px]">Reminder</span>
+                    </span>
+                    <span className="flex h-6 items-center">
+                      {time && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTime('')
+                            playUiTick()
+                          }}
+                          className="metric inline-flex h-6 items-center gap-1 rounded-full border border-white/[0.08] bg-white/[0.03] px-2 text-[9px] tracking-[0.12em] text-white/60 uppercase transition-colors hover:border-white/20 hover:bg-white/[0.06] hover:text-white/90"
+                        >
+                          <X className="size-2.5" strokeWidth={2.4} />
+                          Clear
+                        </button>
+                      )}
+                    </span>
+                  </div>
+
+                  <div
+                    className="grid grid-cols-4 gap-1.5"
+                    role="group"
+                    aria-label={`Quick reminder presets for ${partner.name}`}
+                  >
+                    {QUICK_TIMES.map((preset) => {
+                      const active = time === preset.value
+                      return (
+                        <button
+                          key={preset.value}
+                          type="button"
+                          aria-pressed={active}
+                          aria-label={`Set reminder for ${formatTime(preset.value)}`}
+                          title={formatTime(preset.value)}
+                          onClick={() => {
+                            playUiTick()
+                            setTime(preset.value)
+                          }}
+                          className={`metric h-7 rounded-md border text-[9.5px] tracking-[0.06em] transition-colors duration-200 ${
+                            active
+                              ? 'border-[#F59E0B]/45 bg-[#F59E0B]/[0.14] text-[#FDE68A]'
+                              : 'border-white/[0.07] bg-white/[0.02] text-white/60 hover:border-white/15 hover:text-white/88'
+                          }`}
+                          style={
+                            active
+                              ? { boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08), 0 0 20px -14px #F59E0B' }
+                              : undefined
+                          }
+                        >
+                          {preset.label}
                         </button>
                       )
                     })}
                   </div>
-                </div>
 
-                <div className="min-w-0">
-                  <div className="mb-1.5 flex items-center justify-between gap-2">
-                    <span className="flex items-center gap-1.5 text-white/40">
-                      <Clock className="size-3" strokeWidth={2.2} />
-                      <span className="label-mono text-[9px]">Reminder</span>
-                    </span>
-                    {time && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setTime('')
-                          playUiTick()
-                        }}
-                        className="metric text-[9px] tracking-[0.14em] text-white/40 uppercase transition-colors hover:text-white/85"
-                      >
-                        Clear
-                      </button>
-                    )}
-                  </div>
                   <input
                     type="time"
                     value={time}
+                    step={300}
                     onChange={(event) => setTime(event.target.value)}
-                    aria-label={`Reminder time for ${partner.name}`}
-                    className="metric h-8 w-full rounded-lg border border-white/[0.08] bg-black/20 px-2.5 text-[11px] text-white/85 transition-colors focus:border-white/25 focus:outline-none"
+                    aria-label={`Exact reminder time for ${partner.name}`}
+                    title="Set an exact reminder time"
+                    style={{ colorScheme: 'dark' }}
+                    className="metric mt-1.5 h-9 w-full rounded-lg border border-white/[0.08] bg-black/20 px-2.5 text-[12px] text-white/90 transition-colors focus:border-[#F59E0B]/45 focus:bg-[#F59E0B]/[0.04] focus:outline-none"
                   />
                 </div>
               </div>
@@ -314,7 +415,7 @@ export function QuickAdd({ owner }: Props) {
                   >
                     Also add for {other.name}
                   </div>
-                  <div className="text-[10px] leading-snug text-white/35">
+                  <div className="text-[10px] leading-snug text-white/50">
                     Mirrors this task onto {other.name}&rsquo;s board
                   </div>
                 </div>

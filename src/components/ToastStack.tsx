@@ -14,7 +14,7 @@ const ACCENT_ICON: Record<Accent, string> = {
   shivam: 'text-[#00F2FE]',
   noor: 'text-[#FFB199]',
   sync: 'text-[#F59E0B]',
-  neutral: 'text-white/70',
+  neutral: 'text-white/80',
 }
 
 const ACCENT_BAR: Record<Accent, string> = {
@@ -32,7 +32,7 @@ export function ToastStack() {
       role="region"
       aria-label="Notifications"
       aria-live="polite"
-      className="pointer-events-none fixed top-[68px] right-3 z-50 flex w-[min(92vw,336px)] flex-col gap-2 sm:right-5"
+      className="pointer-events-none fixed top-[calc(68px+env(safe-area-inset-top))] right-3 z-50 flex w-[min(92vw,336px)] flex-col gap-2 sm:right-5"
     >
       <AnimatePresence initial={false}>
         {toasts.map((toast) => (
@@ -44,7 +44,7 @@ export function ToastStack() {
             animate={{ opacity: 1, x: 0, scale: 1 }}
             exit={{ opacity: 0, x: 28, scale: 0.97 }}
             transition={{ type: 'spring', stiffness: 420, damping: 34, mass: 0.7 }}
-            className={`group pointer-events-auto relative w-full cursor-pointer overflow-hidden rounded-2xl border bg-[#0b0b10]/82 px-3.5 py-3 pl-4 text-left backdrop-blur-[20px] transition-colors hover:bg-[#0b0b10]/92 ${ACCENT_RING[toast.accent]}`}
+            className={`group pointer-events-auto relative w-full cursor-pointer overflow-hidden rounded-2xl border bg-[#0B0B10]/82 px-3.5 py-3 pl-4 text-left backdrop-blur-[20px] transition-colors hover:bg-[#0B0B10]/92 ${ACCENT_RING[toast.accent]}`}
             aria-label={`${toast.title}. Dismiss notification.`}
             title="Dismiss"
           >
@@ -57,14 +57,14 @@ export function ToastStack() {
                 {toast.icon ?? '✦'}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[12.5px] font-medium tracking-tight text-white/92">
+                <span className="block truncate text-[12.5px] font-medium tracking-tight text-white/95">
                   {toast.title}
                 </span>
                 {toast.body && (
-                  <span className="mt-0.5 block text-[11px] leading-snug text-white/45">{toast.body}</span>
+                  <span className="mt-0.5 block text-[11px] leading-snug text-white/60">{toast.body}</span>
                 )}
               </span>
-              <span aria-hidden="true" className="mt-px text-white/25 transition-colors group-hover:text-white/65">
+              <span aria-hidden="true" className="mt-px text-white/38 transition-colors group-hover:text-white/76">
                 <X className="size-3.5" strokeWidth={2.2} />
               </span>
             </div>

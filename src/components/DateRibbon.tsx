@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import { CalendarDays, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { addDays, dayNumber, formatLong, isToday, relativeDayLabel, todayISO, weekdayShort } from '../lib/date'
 import { PARTNERS } from '../lib/constants'
 import { playUiTick, playRollover } from '../lib/audio'
@@ -49,6 +49,23 @@ export function DateRibbon() {
     year: Number(viewDate.slice(0, 4)),
     month: Number(viewDate.slice(5, 7)) - 1,
   }))
+  const ribbonRef = useRef<HTMLDivElement | null>(null)
+
+  // Keep the active day centred on narrow screens, where the ribbon scrolls.
+  useEffect(() => {
+    const scroller = ribbonRef.current
+    if (!scroller) return
+    const selected = scroller.querySelector<HTMLElement>('[data-day-selected="true"]')
+    if (!selected) return
+
+    const scrollerRect = scroller.getBoundingClientRect()
+    const selectedRect = selected.getBoundingClientRect()
+    const centered =
+      scroller.scrollLeft +
+      (selectedRect.left - scrollerRect.left) -
+      (scroller.clientWidth - selectedRect.width) / 2
+    scroller.scrollTo({ left: Math.max(0, centered), behavior: 'smooth' })
+  }, [viewDate])
 
   const openDrawer = () => {
     playUiTick()
@@ -81,7 +98,7 @@ export function DateRibbon() {
       <div className="flex flex-wrap items-center gap-2">
         <div className="mr-auto flex min-w-0 items-baseline gap-2">
           <span className="label-mono">Timeline</span>
-          <span className="truncate text-[12px] font-medium tracking-tight text-white/70">{relativeDayLabel(viewDate)}</span>
+          <span className="truncate text-[12px] font-medium tracking-tight text-white/80">{relativeDayLabel(viewDate)}</span>
           {!viewingToday && (
             <button
               type="button"
@@ -113,7 +130,7 @@ export function DateRibbon() {
               <span className="metric rounded-full bg-[#F59E0B]/20 px-1.5 text-[10px]">{rolloverCount}</span>
             </motion.button>
           ) : (
-            <span className="metric hidden h-8 items-center gap-1.5 rounded-full border border-white/[0.06] px-3 text-[10px] tracking-[0.12em] text-white/25 sm:inline-flex">
+            <span className="metric inline-flex h-8 items-center gap-1.5 rounded-full border border-white/[0.06] px-3 text-[10px] tracking-[0.12em] text-white/38">
               ALL CAUGHT UP
             </span>
           )}
@@ -146,7 +163,8 @@ export function DateRibbon() {
             setViewDate(addDays(viewDate, 1))
           }
         }}
-        className="scrollbar-none mt-3 flex items-stretch gap-1.5 overflow-x-auto rounded-xl pb-0.5 outline-none focus-visible:ring-1 focus-visible:ring-white/20"
+        ref={ribbonRef}
+        className="scrollbar-none mt-3 flex scroll-smooth items-stretch gap-1.5 overflow-x-auto overscroll-x-contain rounded-xl pb-0.5 outline-none focus-visible:ring-1 focus-visible:ring-white/20"
       >
         <button
           type="button"
@@ -170,8 +188,9 @@ export function DateRibbon() {
                 setViewDate(iso)
               }}
               aria-pressed={selected}
+              data-day-selected={selected}
               aria-label={`${formatLong(iso)}${mark ? `, ${mark.done} of ${mark.total} done` : ', no tasks'}`}
-              className={`group relative flex min-w-[62px] flex-1 shrink-0 flex-col items-center gap-1 rounded-xl border px-2 py-2 transition-all duration-300 ${
+              className={`group relative flex min-w-[56px] flex-1 shrink-0 flex-col items-center gap-1 rounded-xl border px-2 py-2 transition-all duration-300 sm:min-w-[62px] ${
                 selected
                   ? 'border-white/[0.2] bg-white/[0.09] shadow-[inset_0_1px_0_rgba(255,255,255,0.09)]'
                   : 'border-white/[0.05] bg-white/[0.02] hover:-translate-y-0.5 hover:border-white/[0.13] hover:bg-white/[0.05]'
@@ -190,20 +209,20 @@ export function DateRibbon() {
                 />
               )}
               <span
-                className={`label-mono ${today ? 'text-[#F59E0B]' : selected ? 'text-white/55' : 'text-white/30'}`}
+                className={`label-mono ${today ? 'text-[#F59E0B]' : selected ? 'text-white/68' : 'text-white/45'}`}
               >
                 {today ? 'TODAY' : weekdayShort(iso).toUpperCase()}
               </span>
               <span
                 className={`font-display text-[16px] leading-none font-medium ${
-                  selected ? 'text-white' : today ? 'text-[#F59E0B]/90' : 'text-white/60'
+                  selected ? 'text-white' : today ? 'text-[#F59E0B]/90' : 'text-white/72'
                 }`}
               >
                 {dayNumber(iso)}
               </span>
               <StatusDots mark={mark} />
               {mark && mark.total > 0 && (
-                <span className="metric text-[9px] text-white/25">
+                <span className="metric text-[9px] text-white/38">
                   {mark.done}/{mark.total}
                 </span>
               )}
@@ -221,7 +240,10 @@ export function DateRibbon() {
         </button>
       </div>
 
-      <div className="mt-2 flex items-center gap-3 border-t border-white/[0.07] pt-2.5" aria-live="polite">
+      <div
+        className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-white/[0.07] pt-2.5"
+        aria-live="polite"
+      >
         <span className="flex items-center gap-2">
           <span
             className={`size-1.5 rounded-full ${
@@ -230,11 +252,11 @@ export function DateRibbon() {
                 : 'bg-white/20'
             }`}
           />
-          <span className="metric text-[10px] tracking-[0.12em] text-white/30">
+          <span className="metric text-[10px] tracking-[0.12em] text-white/45">
             {viewProgress.total} TASKS · {pct(viewProgress.sync)}% SYNCED
           </span>
         </span>
-        <span className="metric ml-auto hidden text-[10px] tracking-[0.12em] text-white/20 sm:inline">
+        <span className="metric ml-auto min-w-0 truncate text-[10px] tracking-[0.12em] text-white/32">
           {formatLong(viewDate)}
         </span>
       </div>

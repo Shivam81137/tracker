@@ -135,7 +135,7 @@ export function OrbitRings({ progress, isToday }: Props) {
       <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center">
         <span
           className={`metric text-[clamp(28px,7vw,40px)] leading-none font-semibold tracking-[-0.03em] ${
-            synced ? 'text-[#F59E0B] text-glow-sync' : 'text-white/95'
+            synced ? 'text-[#F59E0B] text-glow-sync' : 'text-white/97'
           }`}
         >
           {syncPct}
@@ -144,7 +144,7 @@ export function OrbitRings({ progress, isToday }: Props) {
         <span className={`label-mono mt-1.5 ${synced ? 'text-[#F59E0B]/80' : ''}`}>
           {synced ? 'PERFECT SYNC' : 'SYNC'}
         </span>
-        <span className="metric mt-1 text-[10px] text-white/35">
+        <span className="metric mt-1 text-[10px] text-white/50">
           {progress.done}/{progress.total} {isToday ? 'TODAY' : 'DONE'}
         </span>
       </div>

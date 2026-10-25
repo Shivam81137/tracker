@@ -103,7 +103,7 @@ export class PresenceEngine {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
-    } catch (err) {
+    } catch {
       // Ignore network errors in offline fallback
     }
 

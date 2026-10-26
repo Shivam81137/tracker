@@ -1,17 +1,15 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   CalendarDays,
   CalendarPlus,
   Check,
-  ChevronRight,
   Cloud,
   Download,
   Flame,
   Menu,
   Settings,
-  SlidersHorizontal,
   X,
 } from 'lucide-react'
 import { PARTNERS, PARTNER_ORDER } from '../lib/constants'
@@ -473,185 +471,6 @@ function InstallButton({
   )
 }
 
-function ToolAction({
-  icon,
-  title,
-  subtitle,
-  tone = 'rgba(255,255,255,0.6)',
-  onClick,
-}: {
-  icon: ReactNode
-  title: string
-  subtitle: string
-  tone?: string
-  onClick: () => void
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="group flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left transition-colors duration-200 hover:bg-white/[0.05]"
-    >
-      <span
-        className="grid size-8 shrink-0 place-items-center rounded-lg border transition-colors duration-200"
-        style={{
-          borderColor: `color-mix(in oklab, ${tone} 22%, transparent)`,
-          background: `color-mix(in oklab, ${tone} 8%, transparent)`,
-          color: tone,
-        }}
-      >
-        {icon}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-[12px] font-medium tracking-tight text-white/90 transition-colors group-hover:text-white">
-          {title}
-        </span>
-        <span className="mt-0.5 block truncate text-[10px] text-white/50">{subtitle}</span>
-      </span>
-      <ChevronRight
-        className="size-3.5 shrink-0 text-white/38 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-white/64"
-        strokeWidth={1.9}
-      />
-    </button>
-  )
-}
-
-function ToolsMenu({ onOpenSettings }: { onOpenSettings: () => void }) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement | null>(null)
-  const { currentUser } = useOrbit()
-  const exportCalendar = useGcalExport()
-  const identity = currentUser ? PARTNERS[currentUser] : null
-
-  useEffect(() => {
-    if (!open) return
-    const onPointerDown = (event: PointerEvent) => {
-      if (!ref.current?.contains(event.target as Node)) setOpen(false)
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false)
-    }
-    window.addEventListener('pointerdown', onPointerDown)
-    window.addEventListener('keydown', onKeyDown)
-    return () => {
-      window.removeEventListener('pointerdown', onPointerDown)
-      window.removeEventListener('keydown', onKeyDown)
-    }
-  }, [open])
-
-  return (
-    <div className="relative" ref={ref}>
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        className={`icon-btn relative ${open ? 'border-white/[0.2] bg-white/[0.1] text-white' : ''}`}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-label="Open tools"
-        title="Tools · identity, calendar & settings"
-      >
-        <SlidersHorizontal className="size-4" strokeWidth={1.9} />
-        <span
-          aria-hidden="true"
-          className="absolute top-1.5 right-1.5 size-1.5 rounded-full ring-2 ring-[#070709] transition-colors duration-300"
-          style={{
-            background: identity?.from ?? 'rgba(255,255,255,0.3)',
-            boxShadow: identity ? `0 0 6px ${identity.from}` : undefined,
-          }}
-        />
-      </button>
-
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            aria-label="Tools"
-            initial={{ opacity: 0, y: -8, scale: 0.97, filter: 'blur(6px)' }}
-            animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-            exit={{ opacity: 0, y: -6, scale: 0.98, filter: 'blur(4px)' }}
-            transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
-            className="absolute top-[calc(100%+0.75rem)] right-0 z-50 w-[21rem] origin-top-right overflow-hidden rounded-2xl border border-white/[0.11] bg-[#09090D]/94 shadow-[0_36px_100px_-32px_rgba(0,0,0,0.98)] backdrop-blur-[28px]"
-          >
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent"
-            />
-
-            <div className="flex items-center gap-2.5 border-b border-white/[0.06] px-4 py-3">
-              <span
-                className="grid size-8 shrink-0 place-items-center rounded-full border text-[10px] font-semibold"
-                style={{
-                  borderColor: identity
-                    ? `color-mix(in oklab, ${identity.from} 38%, transparent)`
-                    : 'rgba(255,255,255,0.1)',
-                  background: identity
-                    ? `color-mix(in oklab, ${identity.from} 13%, transparent)`
-                    : 'rgba(255,255,255,0.04)',
-                  color: identity?.from ?? 'rgba(255,255,255,0.45)',
-                }}
-              >
-                {identity?.initial ?? '?'}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="label-mono text-[9px]">Workspace</p>
-                <p className="mt-0.5 truncate text-[10.5px] text-white/60">
-                  {identity ? `Signed in as ${identity.name}` : 'No identity selected'}
-                </p>
-              </div>
-              <span className="metric rounded-full border border-white/[0.08] bg-white/[0.03] px-1.5 py-0.5 text-[9px] tracking-[0.12em] text-white/45 uppercase">
-                v1
-              </span>
-            </div>
-
-            <div className="space-y-3 p-3">
-              <div>
-                <p className="label-mono mb-2 px-1 text-[9px]">Identity</p>
-                <IdentitySwitcher onPick={() => setOpen(false)} />
-              </div>
-
-              <div className="h-px bg-white/[0.06]" />
-
-              <div className="space-y-0.5">
-                <ToolAction
-                  icon={<CalendarPlus className="size-3.5" strokeWidth={2} />}
-                  title="Sync Google Calendar"
-                  subtitle="Export the upcoming orbit as .ics"
-                  tone="#F59E0B"
-                  onClick={() => {
-                    exportCalendar()
-                    setOpen(false)
-                  }}
-                />
-                <ToolAction
-                  icon={<Settings className="size-3.5" strokeWidth={2} />}
-                  title="Settings"
-                  subtitle="Cloud sync, room & presence"
-                  onClick={() => {
-                    setOpen(false)
-                    onOpenSettings()
-                  }}
-                />
-              </div>
-
-              <CloudStatusRow />
-            </div>
-
-            <div className="flex items-center justify-between border-t border-white/[0.06] px-4 py-2">
-              <span className="flex items-center gap-1.5 font-mono text-[9px] tracking-[0.14em] text-white/38 uppercase">
-                <kbd className="rounded border border-white/[0.1] bg-black/25 px-1 py-px text-white/60">N</kbd>
-                New task
-              </span>
-              <span className="flex items-center gap-1.5 font-mono text-[9px] tracking-[0.14em] text-white/38 uppercase">
-                <kbd className="rounded border border-white/[0.1] bg-black/25 px-1 py-px text-white/60">T</kbd>
-                Today
-              </span>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  )
-}
-
 function MobileToolsSheet({
   open,
   onClose,
@@ -908,7 +727,6 @@ export function NavBar() {
               </div>
               <span className="hidden h-5 w-px bg-white/[0.08] lg:block" aria-hidden="true" />
               <InstallButton prompt={installPrompt} />
-              <ToolsMenu onOpenSettings={openSettings} />
             </div>
 
             <div className="flex items-center gap-1.5 md:hidden">

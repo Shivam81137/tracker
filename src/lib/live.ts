@@ -22,7 +22,7 @@ export interface LiveSync {
   partnerActive: boolean
   /** Realtime presence info for partner */
   partnerPresence: PresenceInfo | null
-  broadcastState: (state: OrbitState) => void
+  broadcastState: (state: OrbitState, partial?: OrbitState) => void
   broadcastNudge: (kind: NudgeKind, senderName?: string, icon?: string) => void
   forceSyncNow: () => Promise<boolean>
   updateFirebaseUrl: (url: string) => void
@@ -31,7 +31,10 @@ export interface LiveSync {
 
 interface Options {
   /** Apply a replica that arrived from another tab or cloud. */
-  onState: (state: OrbitState, meta?: { source?: 'local' | 'mqtt' | 'firebase' | 'http' }) => void
+  onState: (
+    state: OrbitState,
+    meta?: { source?: 'local' | 'mqtt' | 'firebase' | 'http'; partial?: boolean },
+  ) => void
   /** React to a nudge that partner or another tab fired. */
   onNudge: (kind: NudgeKind, from?: string, icon?: string) => void
 }
@@ -93,7 +96,7 @@ export function useLiveSync({ onState, onNudge }: Options): LiveSync {
     const engine = getLiveCloudSync({
       onRemoteState: (cloudState, meta) => {
         markPartnerActive()
-        onStateRef.current(cloudState, { source: meta.source })
+        onStateRef.current(cloudState, { source: meta.source, partial: meta.partial })
       },
       onStatusChange: (nextStatus) => {
         setStatus(nextStatus)
@@ -106,6 +109,34 @@ export function useLiveSync({ onState, onNudge }: Options): LiveSync {
     setStatus(engine.getStatus())
     setLastSyncedAt(engine.getLastSyncedAt() || Date.now())
   }, [markPartnerActive])
+
+  // Returning to the app should feel instant: pull the latest replica and
+  // refresh presence immediately instead of waiting for the next poll.
+  useEffect(() => {
+    const syncNow = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+      void cloudEngineRef.current?.fetchHttpState()
+      try {
+        getPresenceEngine().ping(true)
+      } catch {
+        /* presence engine is not mounted yet */
+      }
+    }
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') syncNow()
+    }
+
+    window.addEventListener('focus', syncNow)
+    window.addEventListener('online', syncNow)
+    window.addEventListener('pageshow', syncNow)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      window.removeEventListener('focus', syncNow)
+      window.removeEventListener('online', syncNow)
+      window.removeEventListener('pageshow', syncNow)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [])
 
   useEffect(() => {
     if (typeof BroadcastChannel === 'undefined') return
@@ -165,7 +196,7 @@ export function useLiveSync({ onState, onNudge }: Options): LiveSync {
     }
   }, [markPartnerActive])
 
-  const broadcastState = useCallback((state: OrbitState) => {
+  const broadcastState = useCallback((state: OrbitState, partial?: OrbitState) => {
     const channel = channelRef.current
     if (channel) {
       try {
@@ -174,7 +205,11 @@ export function useLiveSync({ onState, onNudge }: Options): LiveSync {
     }
 
     if (cloudEngineRef.current) {
-      cloudEngineRef.current.broadcastState(state)
+      if (partial) {
+        cloudEngineRef.current.broadcastPartial(state, partial)
+      } else {
+        cloudEngineRef.current.broadcastState(state)
+      }
       setLastSyncedAt(Date.now())
     }
   }, [])
@@ -199,8 +234,8 @@ export function useLiveSync({ onState, onNudge }: Options): LiveSync {
     if (cloudEngineRef.current) {
       setStatus('connecting')
       const success = await cloudEngineRef.current.fetchHttpState()
-      setStatus('synced')
-      setLastSyncedAt(Date.now())
+      setStatus(success ? 'synced' : 'connecting')
+      if (success) setLastSyncedAt(Date.now())
       return success
     }
     return false

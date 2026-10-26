@@ -1,3 +1,4 @@
+import { PRESENCE_HEARTBEAT_MS } from '../lib/constants'
 import { getFirebaseDbUrl } from '../lib/storage'
 import type { Person, PresenceInfo } from '../lib/types'
 
@@ -40,17 +41,22 @@ export class PresenceEngine {
     this.ping(true)
   }
 
+  public setPartnerPresenceCallback(callback?: (info: PresenceInfo | null) => void) {
+    this.onPartnerPresence = callback
+  }
+
   public start() {
     this.ping(true)
-    // Heartbeat every 15s
     if (typeof window !== 'undefined') {
       this.timer = window.setInterval(() => {
         this.ping()
         this.pollPartner()
-      }, 15000)
+      }, PRESENCE_HEARTBEAT_MS)
 
       window.addEventListener('beforeunload', this.handleUnload)
       window.addEventListener('visibilitychange', this.handleVisibility)
+      window.addEventListener('focus', this.handleFocus)
+      window.addEventListener('online', this.handleOnline)
     }
   }
 
@@ -62,6 +68,8 @@ export class PresenceEngine {
     if (typeof window !== 'undefined') {
       window.removeEventListener('beforeunload', this.handleUnload)
       window.removeEventListener('visibilitychange', this.handleVisibility)
+      window.removeEventListener('focus', this.handleFocus)
+      window.removeEventListener('online', this.handleOnline)
     }
     this.setOnlineStatus(false)
   }
@@ -76,6 +84,14 @@ export class PresenceEngine {
     } else {
       this.setOnlineStatus(false)
     }
+  }
+
+  private handleFocus = () => {
+    if (document.visibilityState === 'visible') this.ping(true)
+  }
+
+  private handleOnline = () => {
+    this.ping(true)
   }
 
   private getBaseUrl(): string {
@@ -126,9 +142,10 @@ export class PresenceEngine {
 
     try {
       const endpoint = `${baseUrl}/presence/${this.currentUser}.json`
-      // Use sendBeacon if unloading, else fetch
+      // Use sendBeacon if unloading, else fetch. A JSON Blob keeps the
+      // Content-Type Firebase expects; plain strings are sent as text/plain.
       if (!isOnline && typeof navigator !== 'undefined' && navigator.sendBeacon) {
-        navigator.sendBeacon(endpoint, JSON.stringify(payload))
+        navigator.sendBeacon(endpoint, new Blob([JSON.stringify(payload)], { type: 'application/json' }))
       } else {
         await fetch(endpoint, {
           method: 'PUT',
@@ -189,7 +206,7 @@ export function getPresenceEngine(opts?: {
       singletonPresence.updateIdentity(opts.currentUser ?? null, opts.firebaseUrl)
     }
     if (opts.onPartnerPresence) {
-      // re-assign callback or let it be
+      singletonPresence.setPartnerPresenceCallback(opts.onPartnerPresence)
     }
   }
   return singletonPresence!

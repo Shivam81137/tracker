@@ -69,7 +69,7 @@ export function SyncSettingsModal({ isOpen, onClose }: SyncSettingsModalProps) {
     setFirebaseUrl(urlInput.trim())
     pushToast({
       title: 'Firebase Endpoint Saved',
-      body: urlInput.trim() ? 'SSE realtime stream updated.' : 'Using default MQTT & bin failover.',
+      body: urlInput.trim() ? 'SSE realtime stream updated.' : 'Using the default MQTT realtime relay.',
       accent: 'shivam',
       icon: '🔥',
     })
@@ -161,9 +161,21 @@ export function SyncSettingsModal({ isOpen, onClose }: SyncSettingsModalProps) {
             <div className="flex flex-wrap items-center justify-between gap-1">
               <span className="text-white/72">Cloud Engine:</span>
               <div className="flex items-center gap-1.5">
-                <span className="size-2 shrink-0 rounded-full bg-[#00F2FE] animate-pulse" />
+                <span
+                  className={`size-2 shrink-0 rounded-full ${
+                    live.status === 'synced'
+                      ? 'bg-emerald-400 animate-pulse'
+                      : live.status === 'connecting'
+                        ? 'bg-amber-400 animate-pulse'
+                        : 'bg-[#FF0844]'
+                  }`}
+                />
                 <span className="text-right font-mono text-[11px] text-white/88">
-                  MQTT Retain (QoS 1) + REST Fallback
+                  {live.status === 'synced'
+                    ? 'Live MQTT + SSE'
+                    : live.status === 'connecting'
+                      ? 'Connecting live channel…'
+                      : 'Fallback polling'}
                 </span>
               </div>
             </div>

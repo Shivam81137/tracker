@@ -34,9 +34,23 @@ export const CHANNEL_NAME = 'syncorbit_live_sync'
 export const USER_IDENTITY_KEY = 'syncorbit.user_identity'
 export const FIREBASE_URL_KEY = 'syncorbit.firebase_db_url'
 export const CLOUD_ROOM_KEY = 'syncorbit_shivam_noor_v2'
-export const MQTT_TOPIC = 'syncorbit/prod/shivam_noor_2026/state'
-export const MQTT_BROKER_PRIMARY = 'wss://broker.emqx.io:8084/mqtt'
-export const MQTT_BROKER_FALLBACK = 'wss://test.mosquitto.org:8081/mqtt'
+export const MQTT_TOPIC = 'syncorbit/prod/shivam_noor_2026/state/v2'
+/**
+ * Public WebSocket brokers, tried in order. Coreflux and Tyckr consistently
+ * give us the lowest browser round-trip time; the rest are resilience layers.
+ */
+export const MQTT_BROKERS = [
+  'wss://iot.coreflux.cloud:443/mqtt',
+  'wss://mqtt.tyckr.io:8081/mqtt',
+  'wss://broker.connectmq.com:8084/mqtt',
+  'wss://broker.hivemq.com:8884/mqtt',
+  'wss://broker.emqx.io:8084/mqtt',
+  'wss://test.mosquitto.org:8081/mqtt',
+] as const
+export const MQTT_BROKER_PRIMARY = MQTT_BROKERS[0]
+export const MQTT_BROKER_FALLBACK = MQTT_BROKERS[1]
+/** Presence heartbeat cadence for cross-device cloud presence. */
+export const PRESENCE_HEARTBEAT_MS = 6000
 
 
 export interface PartnerMeta {

@@ -7,7 +7,7 @@ import { useLiveSync } from './live'
 import { getPresenceEngine } from '../services/presence'
 import { OrbitContext, type OrbitApi } from './orbit-context'
 import { dayProgress } from './progress'
-import { computeStreak, getCurrentUser, getDeviceId, getFirebaseUrl, loadState, mergeStates, saveCurrentUser, saveFirebaseUrl, saveState, sortTasks, uid } from './storage'
+import { changedState, computeStreak, getCurrentUser, getDeviceId, getFirebaseUrl, hasLocalOnlyChanges, isBlankState, loadState, mergeStates, saveCurrentUser, saveFirebaseUrl, saveState, sortTasks, uid } from './storage'
 import type { NewTaskInput, NudgeKind, OrbitState, Person, Task, Toast } from './types'
 
 interface CommitOptions {
@@ -21,6 +21,14 @@ function initialSound(): boolean {
   } catch {
     return true
   }
+}
+
+/**
+ * Client clocks can drift by seconds. A mutation must still be newer than the
+ * replica it replaced, otherwise the partner's merge would ignore it.
+ */
+function nextStamp(previous?: number): number {
+  return Math.max(Date.now(), (previous ?? 0) + 1)
 }
 
 export function OrbitProvider({ children }: { children: ReactNode }) {
@@ -37,6 +45,7 @@ export function OrbitProvider({ children }: { children: ReactNode }) {
   const timers = useRef(new Map<string, number>())
   const commitRef = useRef<(updater: (prev: OrbitState) => OrbitState, opts?: CommitOptions) => void>(() => {})
   const remoteNudgeRef = useRef<(kind: NudgeKind, from?: string, icon?: string) => void>(() => {})
+  const broadcastStateRef = useRef<(next: OrbitState, partial?: OrbitState) => void>(() => {})
 
   const setCurrentUser = useCallback((person: Person) => {
     saveCurrentUser(person)
@@ -95,9 +104,46 @@ export function OrbitProvider({ children }: { children: ReactNode }) {
   /* ------------------------------- live sync ------------------------------- */
 
   const live = useLiveSync({
-    onState: useCallback((remote: OrbitState) => {
-      commitRef.current((prev) => mergeStates(prev, remote), { broadcast: false, persist: true })
-    }, []),
+    onState: useCallback(
+      (
+        remote: OrbitState,
+        meta?: { source?: 'local' | 'mqtt' | 'firebase' | 'http'; partial?: boolean },
+      ) => {
+        const prev = stateRef.current
+        const merged = mergeStates(prev, remote)
+        const locallyBlank = isBlankState(prev)
+        const needsReconcile = Boolean(
+          meta?.source &&
+            meta.source !== 'local' &&
+            !meta.partial &&
+            hasLocalOnlyChanges(merged, remote),
+        )
+        // First contact on a fresh browser: we just received the partner's
+        // board. Seed the realtime channel so a slow MQTT snapshot cannot
+        // leave the cloud empty after we hydrate from Firebase/HTTP.
+        const shouldSeed = Boolean(
+          meta?.source &&
+            meta.source !== 'mqtt' &&
+            !meta.partial &&
+            locallyBlank &&
+            !isBlankState(merged),
+        )
+
+        if (merged !== prev) {
+          commitRef.current(() => merged, { broadcast: false, persist: true })
+        }
+
+        // If the peer was stale and we hold newer local edits, push the union
+        // back even when the merge itself was a no-op. This is what makes
+        // reconnects/offline edits converge instead of waiting for a new edit.
+        if (needsReconcile || shouldSeed) {
+          window.setTimeout(() => {
+            if (stateRef.current === merged) broadcastStateRef.current(merged)
+          }, 120)
+        }
+      },
+      [],
+    ),
     onNudge: useCallback((kind: NudgeKind, from?: string, icon?: string) => {
       remoteNudgeRef.current(kind, from, icon)
     }, []),
@@ -107,20 +153,36 @@ export function OrbitProvider({ children }: { children: ReactNode }) {
     updateFirebaseUrlRef.current = live.updateFirebaseUrl
   }, [live.updateFirebaseUrl])
 
-  const broadcastStateRef = useRef(live.broadcastState)
   useEffect(() => {
     broadcastStateRef.current = live.broadcastState
   }, [live.broadcastState])
 
+  // Seed the cloud with the restored local replica after the realtime channels
+  // have had a moment to deliver their retained snapshot. This catches edits
+  // made while the app was closed without clobbering newer partner data.
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const current = stateRef.current
+      // A fresh device starts blank. Publishing that before the retained
+      // snapshot arrives would erase the partner's board; wait for hydration
+      // or for the first local edit instead.
+      if (!isBlankState(current)) broadcastStateRef.current(current)
+    }, 700)
+    return () => window.clearTimeout(timer)
+  }, [])
+
   /* --------------------------------- commit -------------------------------- */
 
   const commit = useCallback((updater: (prev: OrbitState) => OrbitState, opts: CommitOptions = {}) => {
-    const next = updater(stateRef.current)
-    if (next === stateRef.current) return
+    const prev = stateRef.current
+    const next = updater(prev)
+    if (next === prev) return
     stateRef.current = next
     setState(next)
     if (opts.persist !== false) saveState(next)
-    if (opts.broadcast !== false) broadcastStateRef.current(next)
+    if (opts.broadcast !== false) {
+      broadcastStateRef.current(next, changedState(prev, next))
+    }
   }, [])
 
   // Assigned in an effect: refs must never be written during render.
@@ -211,16 +273,17 @@ export function OrbitProvider({ children }: { children: ReactNode }) {
         const target = prev.tasks.find((task) => task.id === id)
         if (!target) return prev
         const nextDone = !target.done
-        const now = Date.now()
         const mirrors = target.linkId
           ? prev.tasks.filter((task) => task.linkId === target.linkId && task.done !== nextDone)
           : []
+        const now = nextStamp(Math.max(target.updatedAt, ...mirrors.map((task) => task.updatedAt)))
 
         const patched = new Map<string, Task>()
         for (const task of [target, ...mirrors]) {
           patched.set(task.id, {
             ...task,
             done: nextDone,
+            completed: nextDone,
             completedAt: nextDone ? now : undefined,
             updatedAt: now,
           })
@@ -240,7 +303,8 @@ export function OrbitProvider({ children }: { children: ReactNode }) {
         const ids = target.linkId
           ? prev.tasks.filter((task) => task.linkId === target.linkId).map((task) => task.id)
           : [id]
-        const now = Date.now()
+        const targets = prev.tasks.filter((task) => ids.includes(task.id))
+        const now = nextStamp(Math.max(...targets.map((task) => task.updatedAt)))
         const tombstones = { ...prev.tombstones }
         for (const key of ids) tombstones[key] = now
         // Soft delete the task by flagging deleted: true, setting updatedAt, and updating tombstones
@@ -256,8 +320,9 @@ export function OrbitProvider({ children }: { children: ReactNode }) {
   const cheerTask = useCallback(
     (id: string) => {
       commit((prev) => {
-        if (!prev.tasks.some((task) => task.id === id)) return prev
-        const now = Date.now()
+        const target = prev.tasks.find((task) => task.id === id)
+        if (!target) return prev
+        const now = nextStamp(target.updatedAt)
         return {
           ...prev,
           tasks: prev.tasks.map((task) =>
@@ -279,12 +344,17 @@ export function OrbitProvider({ children }: { children: ReactNode }) {
     commit((prev) => {
       const viewingToday = isToday(from)
       let moved = 0
-      const now = Date.now()
+      const base = Date.now()
       const tasks = prev.tasks.map((task) => {
         const shouldMove = viewingToday ? task.date < today : task.date === from && from !== today
         if (!shouldMove || task.done) return task
         moved += 1
-        return { ...task, date: today, rolledFrom: task.rolledFrom ?? task.date, updatedAt: now }
+        return {
+          ...task,
+          date: today,
+          rolledFrom: task.rolledFrom ?? task.date,
+          updatedAt: Math.max(base, task.updatedAt + 1),
+        }
       })
       return moved === 0 ? prev : { ...prev, tasks }
     })
@@ -313,18 +383,23 @@ export function OrbitProvider({ children }: { children: ReactNode }) {
       const senderName = currentUser ? (currentUser === 'shivam' ? 'Shivam' : 'Noor') : 'Partner'
       const icon = NUDGE_MAP[kind].emoji
       live.broadcastNudge(kind, senderName, icon)
-      const now = Date.now()
-      commit((prev) => ({
-        ...prev,
-        nudges: [{ id: uid(), kind, at: now, by: deviceId, from: senderName, icon }, ...prev.nudges].slice(0, NUDGE_LOG_LIMIT),
-        lastNudge: {
-          kind,
-          from: senderName,
-          to: currentUser === 'shivam' ? 'noor' : 'shivam',
-          at: now,
-          icon,
-        },
-      }))
+      commit((prev) => {
+        const now = nextStamp(prev.lastNudge?.at)
+        return {
+          ...prev,
+          nudges: [
+            { id: uid(), kind, at: now, by: deviceId, from: senderName, icon },
+            ...prev.nudges,
+          ].slice(0, NUDGE_LOG_LIMIT),
+          lastNudge: {
+            kind,
+            from: senderName,
+            to: currentUser === 'shivam' ? 'noor' : 'shivam',
+            at: now,
+            icon,
+          },
+        }
+      })
       showNudge(kind, 'sent', senderName, icon)
       burstFromElement(anchor, [ACCENT_HEX.sync, '#FFB199', '#00F2FE'], {
         count: 34,
@@ -375,11 +450,11 @@ export function OrbitProvider({ children }: { children: ReactNode }) {
 
   const setMood = useCallback(
     (person: Person, emoji: string) => {
-      const now = Date.now()
-      commit((prev) => ({
-        ...prev,
-        [person === 'shivam' ? 'shivamMood' : 'noorMood']: { emoji, updatedAt: now },
-      }))
+      commit((prev) => {
+        const key = person === 'shivam' ? 'shivamMood' : 'noorMood'
+        const now = nextStamp(prev[key]?.updatedAt)
+        return { ...prev, [key]: { emoji, updatedAt: now } }
+      })
     },
     [commit],
   )
@@ -388,7 +463,7 @@ export function OrbitProvider({ children }: { children: ReactNode }) {
     (text: string) => {
       commit((prev) => ({
         ...prev,
-        sharedScratchpad: { text, updatedAt: Date.now() },
+        sharedScratchpad: { text, updatedAt: nextStamp(prev.sharedScratchpad?.updatedAt) },
       }))
     },
     [commit],

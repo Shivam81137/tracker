@@ -8,6 +8,23 @@ export function emptyState(): OrbitState {
   return { version: STATE_VERSION, tasks: [], nudges: [], tombstones: {} }
 }
 
+/**
+ * A brand-new browser has no tasks, tombstones, nudges, moods or scratchpad.
+ * Never publish this over a cloud snapshot that may still be loading, otherwise
+ * a fresh device can erase the partner's board on first launch.
+ */
+export function isBlankState(state: OrbitState): boolean {
+  return (
+    state.tasks.length === 0 &&
+    state.nudges.length === 0 &&
+    Object.keys(state.tombstones).length === 0 &&
+    !state.sharedScratchpad?.text?.trim() &&
+    !state.shivamMood &&
+    !state.noorMood &&
+    !state.lastNudge
+  )
+}
+
 export function uid(): string {
   const c = globalThis.crypto
   if (c && typeof c.randomUUID === 'function') return c.randomUUID()
@@ -50,7 +67,10 @@ function sanitizeTask(raw: unknown): Task | null {
   if (!trimmed) return null
 
   const createdAt = typeof raw.createdAt === 'number' && Number.isFinite(raw.createdAt) ? raw.createdAt : Date.now()
-  const done = raw.done === true || raw.completed === true
+  // `done` is authoritative. Legacy replicas used `completed` as the only
+  // completion flag, so only fall back to it when `done` is absent. Otherwise
+  // a stale `completed: true` would resurrect a task the user just unchecked.
+  const done = typeof raw.done === 'boolean' ? raw.done : raw.completed === true
   const deleted = raw.deleted === true
   const time = typeof raw.time === 'string' && TIME_RE.test(raw.time) ? raw.time : undefined
   const priority = PRIORITY_SET.has(raw.priority as Priority) ? (raw.priority as Priority) : 'chill'
@@ -95,6 +115,28 @@ function sanitizeNudge(raw: unknown): NudgeEvent | null {
   return { id, kind, at, by, from, icon }
 }
 
+/**
+ * Deterministic tie-breaker for replicas that carry the exact same clock stamp.
+ * Without this, two devices can keep different `done` flags forever because the
+ * merge cannot tell which side is newer.
+ */
+function taskRank(task: Task): string {
+  return [
+    task.deleted ? '1' : '0',
+    task.done ? '1' : '0',
+    String(task.cheers).padStart(6, '0'),
+    task.title,
+    task.time ?? '',
+    task.priority,
+  ].join('|')
+}
+
+function preferTask(candidate: Task, current?: Task): boolean {
+  if (!current) return true
+  if (candidate.updatedAt !== current.updatedAt) return candidate.updatedAt > current.updatedAt
+  return taskRank(candidate) > taskRank(current)
+}
+
 export function sanitizeState(raw: unknown): OrbitState {
   if (!isRecord(raw)) return emptyState()
 
@@ -121,7 +163,7 @@ export function sanitizeState(raw: unknown): OrbitState {
   const byId = new Map<string, Task>()
   for (const task of tasks) {
     const prev = byId.get(task.id)
-    if (!prev || task.updatedAt >= prev.updatedAt) byId.set(task.id, task)
+    if (preferTask(task, prev)) byId.set(task.id, task)
   }
 
   const pruned = pruneTombstones(tombstones)
@@ -200,52 +242,170 @@ export function saveState(state: OrbitState): void {
   }
 }
 
-/** Merge two replicas deterministically (last-write-wins per task + tombstones). */
+/**
+ * Merge two replicas deterministically (last-write-wins per task + tombstones).
+ *
+ * Returns the original `a` reference when the remote replica adds nothing. That
+ * keeps high-frequency polling from re-rendering the entire app every tick.
+ */
 export function mergeStates(a: OrbitState, b: OrbitState): OrbitState {
-  const tombstones = { ...a.tombstones }
+  let changed = false
+  const aPruned = pruneTombstones(a.tombstones)
+  const tombstones = { ...aPruned }
   for (const [key, value] of Object.entries(b.tombstones)) {
-    tombstones[key] = Math.max(tombstones[key] ?? 0, value)
+    const next = Math.max(tombstones[key] ?? 0, value)
+    if (next > (tombstones[key] ?? 0)) {
+      tombstones[key] = next
+      changed = true
+    }
   }
   const pruned = pruneTombstones(tombstones)
+  if (Object.keys(pruned).length !== Object.keys(aPruned).length) changed = true
 
-  const byId = new Map<string, Task>()
-  for (const task of [...a.tasks, ...b.tasks]) {
+  const byId = new Map<string, Task>(a.tasks.map((task) => [task.id, task]))
+  for (const task of b.tasks) {
     const prev = byId.get(task.id)
-    if (!prev || task.updatedAt > prev.updatedAt) byId.set(task.id, task)
+    if (!prev) {
+      byId.set(task.id, task)
+      changed = true
+    } else if (preferTask(task, prev)) {
+      byId.set(task.id, task)
+      changed = true
+    }
   }
 
   // Ensure deleted tasks from tombstones stay marked
   for (const [id, task] of byId.entries()) {
-    if (isDeleted(task, pruned)) {
+    if (isDeleted(task, pruned) && !task.deleted) {
       byId.set(id, { ...task, deleted: true })
+      changed = true
     }
   }
 
-  const nudges = new Map<string, NudgeEvent>()
-  for (const nudge of [...a.nudges, ...b.nudges]) nudges.set(nudge.id, nudge)
+  const nudges = new Map<string, NudgeEvent>(a.nudges.map((nudge) => [nudge.id, nudge]))
+  for (const nudge of b.nudges) {
+    if (!nudges.has(nudge.id)) {
+      nudges.set(nudge.id, nudge)
+      changed = true
+    }
+  }
 
-  const pickFresher = <T extends { updatedAt: number }>(x?: T, y?: T): T | undefined => {
+  const pickMood = (
+    x?: OrbitState['shivamMood'],
+    y?: OrbitState['shivamMood'],
+  ): OrbitState['shivamMood'] => {
     if (!x) return y
     if (!y) return x
-    return x.updatedAt >= y.updatedAt ? x : y
+    if (x.updatedAt !== y.updatedAt) return x.updatedAt > y.updatedAt ? x : y
+    return x.emoji >= y.emoji ? x : y
+  }
+
+  const pickScratchpad = (
+    x?: OrbitState['sharedScratchpad'],
+    y?: OrbitState['sharedScratchpad'],
+  ): OrbitState['sharedScratchpad'] => {
+    if (!x) return y
+    if (!y) return x
+    if (x.updatedAt !== y.updatedAt) return x.updatedAt > y.updatedAt ? x : y
+    return x.text >= y.text ? x : y
   }
 
   const pickNudge = (x?: OrbitState['lastNudge'], y?: OrbitState['lastNudge']) => {
     if (!x) return y
     if (!y) return x
-    return x.at >= y.at ? x : y
+    if (x.at !== y.at) return x.at > y.at ? x : y
+    const xKey = `${x.kind}|${x.from}|${x.icon ?? ''}|${String(x.id)}`
+    const yKey = `${y.kind}|${y.from}|${y.icon ?? ''}|${String(y.id)}`
+    return xKey >= yKey ? x : y
   }
+
+  const shivamMood = pickMood(a.shivamMood, b.shivamMood)
+  const noorMood = pickMood(a.noorMood, b.noorMood)
+  const sharedScratchpad = pickScratchpad(a.sharedScratchpad, b.sharedScratchpad)
+  const lastNudge = pickNudge(a.lastNudge, b.lastNudge)
+  if (shivamMood !== a.shivamMood) changed = true
+  if (noorMood !== a.noorMood) changed = true
+  if (sharedScratchpad !== a.sharedScratchpad) changed = true
+  if (lastNudge !== a.lastNudge) changed = true
+
+  if (!changed) return a
 
   return {
     version: STATE_VERSION,
     tasks: [...byId.values()],
     nudges: [...nudges.values()].sort((x, y) => y.at - x.at).slice(0, NUDGE_LOG_LIMIT),
     tombstones: pruned,
-    shivamMood: pickFresher(a.shivamMood, b.shivamMood),
-    noorMood: pickFresher(a.noorMood, b.noorMood),
-    sharedScratchpad: pickFresher(a.sharedScratchpad, b.sharedScratchpad),
-    lastNudge: pickNudge(a.lastNudge, b.lastNudge),
+    shivamMood,
+    noorMood,
+    sharedScratchpad,
+    lastNudge,
   }
+}
+
+/**
+ * Build a compact replica for live delivery: all top-level fields plus only the
+ * tasks whose version changed. Receivers merge it into their full local state.
+ * This keeps a two-task toggle at a few hundred bytes instead of 45-50 KB.
+ */
+export function changedState(prev: OrbitState, next: OrbitState): OrbitState {
+  const previousTasks = new Map(prev.tasks.map((task) => [task.id, task]))
+  const tasks = next.tasks.filter((task) => {
+    const before = previousTasks.get(task.id)
+    return !before || before.updatedAt !== task.updatedAt
+  })
+  return { ...next, tasks }
+}
+
+/**
+ * True when `merged` contains local data that the remote replica did not have.
+ * Used to push a reconciliation snapshot after merging an offline/stale peer.
+ */
+export function hasLocalOnlyChanges(merged: OrbitState, remote: OrbitState): boolean {
+  const remoteTasks = new Map(remote.tasks.map((task) => [task.id, task]))
+  for (const task of merged.tasks) {
+    const other = remoteTasks.get(task.id)
+    if (!other) return true
+    if (task.updatedAt !== other.updatedAt) {
+      if (task.updatedAt > other.updatedAt) return true
+    } else if (taskRank(task) !== taskRank(other) && preferTask(task, other)) {
+      return true
+    }
+    if (task.deleted && !other.deleted) return true
+  }
+
+  for (const [id, at] of Object.entries(merged.tombstones)) {
+    if ((remote.tombstones[id] ?? 0) < at) return true
+  }
+
+  const remoteNudges = new Set(remote.nudges.map((nudge) => nudge.id))
+  if (merged.nudges.some((nudge) => !remoteNudges.has(nudge.id))) return true
+
+  const moodWins = (x?: OrbitState['shivamMood'], y?: OrbitState['shivamMood']) => {
+    if (!x) return false
+    if (!y) return true
+    if (x.updatedAt !== y.updatedAt) return x.updatedAt > y.updatedAt
+    return x.emoji !== y.emoji && x.emoji >= y.emoji
+  }
+  if (moodWins(merged.shivamMood, remote.shivamMood)) return true
+  if (moodWins(merged.noorMood, remote.noorMood)) return true
+
+  const scratchpadWins = (x?: OrbitState['sharedScratchpad'], y?: OrbitState['sharedScratchpad']) => {
+    if (!x) return false
+    if (!y) return true
+    if (x.updatedAt !== y.updatedAt) return x.updatedAt > y.updatedAt
+    return x.text !== y.text && x.text >= y.text
+  }
+  if (scratchpadWins(merged.sharedScratchpad, remote.sharedScratchpad)) return true
+
+  if (merged.lastNudge && !remote.lastNudge) return true
+  if (merged.lastNudge && remote.lastNudge) {
+    if (merged.lastNudge.at !== remote.lastNudge.at) return merged.lastNudge.at > remote.lastNudge.at
+    const mergedKey = `${merged.lastNudge.kind}|${merged.lastNudge.from}|${merged.lastNudge.icon ?? ''}|${String(merged.lastNudge.id)}`
+    const remoteKey = `${remote.lastNudge.kind}|${remote.lastNudge.from}|${remote.lastNudge.icon ?? ''}|${String(remote.lastNudge.id)}`
+    if (mergedKey !== remoteKey && mergedKey >= remoteKey) return true
+  }
+
+  return false
 }
 
 /* ---------------------------- identity & firebase ---------------------------- */

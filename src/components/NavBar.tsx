@@ -69,12 +69,17 @@ function usePartnerStatus() {
   const partnerMeta = partnerKey ? PARTNERS[partnerKey] : null
   const info = live.partnerPresence
   const hasPresence = Boolean(info && info.user === partnerKey)
-  const isOnline = Boolean(hasPresence && info?.isOnline)
+  // Without a Firebase URL we still know the partner is nearby as soon as a
+  // realtime MQTT/Firebase state arrives. Use that as a presence fallback.
+  const recentlyActive = !hasPresence && live.partnerActive
+  const isOnline = Boolean(hasPresence ? info?.isOnline : recentlyActive)
   const lastSeen = hasPresence ? info?.lastSeen : undefined
   const label = !partnerKey
     ? 'Solo mode'
     : isOnline
-      ? `${partnerMeta?.name} active`
+      ? recentlyActive
+        ? `${partnerMeta?.name} syncing`
+        : `${partnerMeta?.name} active`
       : lastSeen
         ? `${partnerMeta?.name} ${timeAgoShort(lastSeen, now)}`
         : `${partnerMeta?.name} away`

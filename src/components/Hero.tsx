@@ -342,9 +342,16 @@ function PartnerStatusCard() {
   const partner = PARTNERS[partnerKey]
   const info = live.partnerPresence
   const hasPresence = Boolean(info && info.user === partnerKey)
-  const isOnline = Boolean(hasPresence && info?.isOnline)
+  const recentlyActive = !hasPresence && live.partnerActive
+  const isOnline = Boolean(hasPresence ? info?.isOnline : recentlyActive)
   const lastSeen = hasPresence ? info?.lastSeen : undefined
-  const status = isOnline ? 'Online now' : lastSeen ? `Seen ${relativeFromNow(lastSeen)}` : 'Away'
+  const status = isOnline
+    ? recentlyActive
+      ? 'Syncing now'
+      : 'Online now'
+    : lastSeen
+      ? `Seen ${relativeFromNow(lastSeen)}`
+      : 'Away'
 
   return (
     <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 py-2.5 backdrop-blur-md md:hidden">

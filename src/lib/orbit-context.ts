@@ -40,6 +40,8 @@ export interface OrbitApi {
   setFirebaseUrl: (url: string) => void
   setMood: (person: Person, emoji: string) => void
   setScratchpad: (text: string) => void
+  addNeetMark: (input: { date: string; score: number; label?: string }) => void
+  deleteNeetMark: (id: string) => void
 
   /* mutations */
   addTasks: (input: NewTaskInput) => number

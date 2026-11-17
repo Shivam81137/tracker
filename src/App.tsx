@@ -13,6 +13,7 @@ import { Reveal } from './components/Reveal'
 import { TaskBoard } from './components/TaskBoard'
 import { ToastStack } from './components/ToastStack'
 import { SharedScratchpad } from './components/SharedScratchpad'
+import { NeetMarksCard } from './components/NeetMarksCard'
 import { SyncVoiceCapsule } from './components/SyncVoiceCapsule'
 import { useFrameSequence } from './hooks/useFrameSequence'
 import { OrbitProvider } from './lib/store'
@@ -198,6 +199,11 @@ function Shell() {
           {/* Closing note: the automated evening journal for both partners. */}
           <Reveal delay={0.12}>
             <SyncVoiceCapsule />
+          </Reveal>
+
+          {/* Bottom of the page: NEET mock-test marks graph. */}
+          <Reveal delay={0.14}>
+            <NeetMarksCard />
           </Reveal>
         </main>
 

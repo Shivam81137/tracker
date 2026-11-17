@@ -67,10 +67,25 @@ export interface TimestampedEmoji {
   updatedAt: number
 }
 
+/** One NEET mock-test result. Soft-deleted so removals sync across devices. */
+export interface NeetMark {
+  id: string
+  /** Test date, ISO `YYYY-MM-DD`. */
+  date: string
+  /** Marks obtained. NEET UG is out of 720 and allows negative marking. */
+  score: number
+  /** Optional short label, e.g. "AIIMS Mock 3". */
+  label?: string
+  createdAt: number
+  updatedAt: number
+  deleted?: boolean
+}
+
 /** Persisted root document. */
 export interface OrbitState {
   version: number
   tasks: Task[]
+  neetMarks?: NeetMark[]
   nudges: NudgeEvent[]
   /** Delete tombstones (task id -> deletedAt) so cross-tab and cross-device deletes converge. */
   tombstones: Record<string, number>

@@ -469,6 +469,33 @@ export function OrbitProvider({ children }: { children: ReactNode }) {
     [commit],
   )
 
+  const addNeetMark = useCallback(
+    (input: { date: string; score: number; label?: string }) => {
+      const now = Date.now()
+      const label = input.label?.trim().slice(0, 40) || undefined
+      commit((prev) => ({
+        ...prev,
+        neetMarks: [
+          ...(prev.neetMarks ?? []),
+          { id: uid(), date: input.date, score: Math.round(input.score), label, createdAt: now, updatedAt: now },
+        ],
+      }))
+    },
+    [commit],
+  )
+
+  const deleteNeetMark = useCallback(
+    (id: string) => {
+      commit((prev) => ({
+        ...prev,
+        neetMarks: (prev.neetMarks ?? []).map((mark) =>
+          mark.id === id ? { ...mark, deleted: true, updatedAt: nextStamp(mark.updatedAt) } : mark,
+        ),
+      }))
+    },
+    [commit],
+  )
+
   /* -------------------------------- derived -------------------------------- */
 
   const activeTasks = useMemo(() => state.tasks.filter((task) => !task.deleted), [state.tasks])
@@ -567,6 +594,8 @@ export function OrbitProvider({ children }: { children: ReactNode }) {
       setFirebaseUrl,
       setMood,
       setScratchpad,
+      addNeetMark,
+      deleteNeetMark,
       addTasks,
       toggleTask,
       deleteTask,
@@ -598,6 +627,8 @@ export function OrbitProvider({ children }: { children: ReactNode }) {
       setFirebaseUrl,
       setMood,
       setScratchpad,
+      addNeetMark,
+      deleteNeetMark,
       addTasks,
       toggleTask,
       deleteTask,

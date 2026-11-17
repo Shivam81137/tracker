@@ -1,6 +1,6 @@
 import { NUDGE_LOG_LIMIT, STORAGE_KEY, TOMBSTONE_TTL_MS, DEVICE_KEY, USER_IDENTITY_KEY, FIREBASE_URL_KEY } from './constants'
 import { fromISODate, todayISO } from './date'
-import type { NudgeEvent, OrbitState, Person, Priority, Task } from './types'
+import type { NeetMark, NudgeEvent, OrbitState, Person, Priority, Task } from './types'
 
 export const STATE_VERSION = 1
 
@@ -17,6 +17,7 @@ export function isBlankState(state: OrbitState): boolean {
   return (
     state.tasks.length === 0 &&
     state.nudges.length === 0 &&
+    (state.neetMarks?.length ?? 0) === 0 &&
     Object.keys(state.tombstones).length === 0 &&
     !state.sharedScratchpad?.text?.trim() &&
     !state.shivamMood &&
@@ -103,6 +104,41 @@ function sanitizeTask(raw: unknown): Task | null {
   }
 }
 
+export const NEET_MAX_SCORE = 720
+export const NEET_MIN_SCORE = -180
+
+function sanitizeNeetMark(raw: unknown): NeetMark | null {
+  if (!isRecord(raw)) return null
+  const { id, date, score } = raw
+  if (typeof id !== 'string' || !id) return null
+  if (typeof date !== 'string' || !ISO_RE.test(date)) return null
+  if (typeof score !== 'number' || !Number.isFinite(score)) return null
+  const createdAt = typeof raw.createdAt === 'number' && Number.isFinite(raw.createdAt) ? raw.createdAt : Date.now()
+  const label = typeof raw.label === 'string' && raw.label.trim() ? raw.label.trim().slice(0, 40) : undefined
+  return {
+    id,
+    date,
+    score: Math.min(NEET_MAX_SCORE, Math.max(NEET_MIN_SCORE, Math.round(score))),
+    label,
+    createdAt,
+    updatedAt: typeof raw.updatedAt === 'number' && Number.isFinite(raw.updatedAt) ? raw.updatedAt : createdAt,
+    deleted: raw.deleted === true,
+  }
+}
+
+function mergeNeetMarks(a: NeetMark[] = [], b: NeetMark[] = []): { marks: NeetMark[]; changed: boolean } {
+  const byId = new Map<string, NeetMark>(a.map((m) => [m.id, m]))
+  let changed = false
+  for (const mark of b) {
+    const prev = byId.get(mark.id)
+    if (!prev || mark.updatedAt > prev.updatedAt) {
+      byId.set(mark.id, mark)
+      changed = true
+    }
+  }
+  return { marks: [...byId.values()], changed }
+}
+
 function sanitizeNudge(raw: unknown): NudgeEvent | null {
   if (!isRecord(raw)) return null
   const kind = raw.kind
@@ -159,6 +195,16 @@ export function sanitizeState(raw: unknown): OrbitState {
     }
   }
 
+  const neetById = new Map<string, NeetMark>()
+  if (Array.isArray(raw.neetMarks)) {
+    for (const item of raw.neetMarks) {
+      const mark = sanitizeNeetMark(item)
+      if (!mark) continue
+      const prev = neetById.get(mark.id)
+      if (!prev || mark.updatedAt > prev.updatedAt) neetById.set(mark.id, mark)
+    }
+  }
+
   // De-duplicate by id, keeping the freshest revision.
   const byId = new Map<string, Task>()
   for (const task of tasks) {
@@ -199,6 +245,7 @@ export function sanitizeState(raw: unknown): OrbitState {
   return {
     version: STATE_VERSION,
     tasks: [...byId.values()].map((task) => (isDeleted(task, pruned) ? { ...task, deleted: true } : task)),
+    neetMarks: [...neetById.values()],
     nudges,
     tombstones: pruned,
     shivamMood,
@@ -282,6 +329,9 @@ export function mergeStates(a: OrbitState, b: OrbitState): OrbitState {
     }
   }
 
+  const neet = mergeNeetMarks(a.neetMarks, b.neetMarks)
+  if (neet.changed) changed = true
+
   const nudges = new Map<string, NudgeEvent>(a.nudges.map((nudge) => [nudge.id, nudge]))
   for (const nudge of b.nudges) {
     if (!nudges.has(nudge.id)) {
@@ -333,6 +383,7 @@ export function mergeStates(a: OrbitState, b: OrbitState): OrbitState {
   return {
     version: STATE_VERSION,
     tasks: [...byId.values()],
+    neetMarks: neet.marks,
     nudges: [...nudges.values()].sort((x, y) => y.at - x.at).slice(0, NUDGE_LOG_LIMIT),
     tombstones: pruned,
     shivamMood,
@@ -375,6 +426,12 @@ export function hasLocalOnlyChanges(merged: OrbitState, remote: OrbitState): boo
 
   for (const [id, at] of Object.entries(merged.tombstones)) {
     if ((remote.tombstones[id] ?? 0) < at) return true
+  }
+
+  const remoteMarks = new Map((remote.neetMarks ?? []).map((m) => [m.id, m]))
+  for (const mark of merged.neetMarks ?? []) {
+    const other = remoteMarks.get(mark.id)
+    if (!other || mark.updatedAt > other.updatedAt) return true
   }
 
   const remoteNudges = new Set(remote.nudges.map((nudge) => nudge.id))

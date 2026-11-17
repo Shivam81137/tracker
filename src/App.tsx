@@ -14,6 +14,7 @@ import { TaskBoard } from './components/TaskBoard'
 import { ToastStack } from './components/ToastStack'
 import { SharedScratchpad } from './components/SharedScratchpad'
 import { NeetMarksCard } from './components/NeetMarksCard'
+import { RotateGuard } from './components/RotateGuard'
 import { SyncVoiceCapsule } from './components/SyncVoiceCapsule'
 import { useFrameSequence } from './hooks/useFrameSequence'
 import { OrbitProvider } from './lib/store'
@@ -212,6 +213,7 @@ function Shell() {
 
       <ToastStack />
       <FirstTimeIdentityBanner />
+      <RotateGuard />
 
       <LoadLine progress={sequence.progress} done={sequence.done} degraded={sequence.degraded} />
     </>

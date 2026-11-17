@@ -28,7 +28,7 @@ export default defineConfig({
         scope: '/',
         display: 'standalone',
         display_override: ['standalone', 'minimal-ui'],
-        orientation: 'any',
+        orientation: 'portrait',
         background_color: '#070709',
         theme_color: '#070709',
         categories: ['productivity', 'lifestyle'],

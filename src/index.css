@@ -474,3 +474,29 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ------------------------------------------------------------------ *
+ *  Portrait-only guard for phones
+ *  Shown only on touch devices in landscape with a phone-sized height,
+ *  so tablets and desktops are never affected.
+ * ------------------------------------------------------------------ */
+.rotate-guard {
+  display: none;
+}
+
+@media (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
+  .rotate-guard {
+    display: flex;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 24px;
+    text-align: center;
+    background: #070709;
+    color: rgb(255 255 255 / 0.9);
+  }
+}
